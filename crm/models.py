@@ -12,21 +12,59 @@ class User(AbstractUser):
         ('GESTION', 'Gestion'),
     ]
 
-    role = models.CharField(
-        max_length=10,
-        choices=ROLE_CHOICES,
-        verbose_name="Rôle"
-    )
+    # Numéro d'employé
     employee_number = models.CharField(
         max_length=10,
         unique=True,
         verbose_name="Numéro d'employé"
     )
+
+    # Affiliation à un département
+    role = models.CharField(
+        max_length=10,
+        choices=ROLE_CHOICES,
+        verbose_name="Département"  # Renommé pour être plus clair
+    )
+
+    # Champs obligatoires pour respecter les exigences
+    first_name = models.CharField(
+        max_length=30,
+        verbose_name="Prénom",
+        blank=False  # Obligatoire
+    )
+    last_name = models.CharField(
+        max_length=30,
+        verbose_name="Nom de famille",
+        blank=False  # Obligatoire
+    )
+    email = models.EmailField(
+        verbose_name="Adresse email",
+        unique=True,  # Email unique
+        blank=False  # Obligatoire
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Champs requis par Django
+    REQUIRED_FIELDS = ['email', 'first_name', 'last_name', 'employee_number', 'role']
+
+    class Meta:
+        verbose_name = "Collaborateur"
+        verbose_name_plural = "Collaborateurs"
+
     def __str__(self):
-        return f"{self.first_name} {self.last_name} ({self.role})"
+        return f"{self.first_name} {self.last_name} ({self.get_role_display()}) - {self.employee_number}"
+
+    @property
+    def full_name(self):
+        """Retourne le nom complet"""
+        return f"{self.first_name} {self.last_name}"
+
+    @property
+    def department(self):
+        """Alias pour le département (role)"""
+        return self.role
 
 
 class Client(models.Model):
