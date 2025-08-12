@@ -2,7 +2,11 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.core.exceptions import ValidationError
 
-User = get_user_model()
+# Import sécurisé du modèle User
+try:
+    User = get_user_model()
+except Exception:
+    User = None
 
 
 class AuthService:
@@ -18,10 +22,13 @@ class AuthService:
 
     @staticmethod
     def create_user(username, email, password, role, employee_number,
-                    first_name, last_name):  # first_name et last_name obligatoires
+                    first_name, last_name):
         """
         Crée un nouvel utilisateur avec tous les éléments d'identification requis
         """
+        if not User:
+            raise Exception("Modèle User non disponible")
+
         # Validation des champs obligatoires
         if not all([username, email, password, role, employee_number, first_name, last_name]):
             raise ValidationError("Tous les champs sont obligatoires")

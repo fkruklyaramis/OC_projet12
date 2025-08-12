@@ -1,23 +1,23 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
+from django.utils.html import format_html
 from .models import Client, Contract, Event
+from .jwt_auth import JWTAuthService
 
 User = get_user_model()
 
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    """Administration des utilisateurs Epic Events avec tous les champs requis"""
+    """Administration des utilisateurs Epic Events avec informations de session"""
 
-    # Affichage dans la liste
     list_display = ('username', 'employee_number', 'first_name', 'last_name',
-                    'email', 'role', 'is_active', 'date_joined')
+                    'email', 'role', 'is_active', 'session_status', 'date_joined')
     list_filter = ('role', 'is_active', 'is_staff', 'date_joined')
     search_fields = ('username', 'email', 'employee_number', 'first_name', 'last_name')
     ordering = ('employee_number',)
 
-    # Champs lors de la modification d'un utilisateur existant
     fieldsets = (
         (None, {
             'fields': ('username', 'password')
@@ -33,13 +33,17 @@ class CustomUserAdmin(UserAdmin):
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
             'classes': ('collapse',)
         }),
+        ('Authentification JWT', {
+            'fields': ('jwt_session_info',),
+            'classes': ('collapse',),
+            'description': 'Informations sur les sessions JWT actives'
+        }),
         ('Dates importantes', {
             'fields': ('last_login', 'date_joined'),
             'classes': ('collapse',)
         }),
     )
 
-    # Champs lors de la création d'un nouvel utilisateur
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
@@ -56,6 +60,45 @@ class CustomUserAdmin(UserAdmin):
             'description': 'Numéro d\'employé unique et département'
         }),
     )
+
+    readonly_fields = ('jwt_session_info',)
+
+    def session_status(self, obj):
+        """Affiche le statut de session JWT de l'utilisateur"""
+        try:
+            token_info = JWTAuthService.get_token_info()
+            if token_info and token_info['username'] == obj.username:
+                if token_info['is_expired']:
+                    return format_html('<span style="color: red;">Session expirée</span>')
+                else:
+                    return format_html('<span style="color: green;">Session active</span>')
+            else:
+                return format_html('<span style="color: gray;">Pas de session</span>')
+        except Exception:
+            return format_html('<span style="color: gray;">Indéterminé</span>')
+
+    session_status.short_description = 'Statut JWT'
+
+    def jwt_session_info(self, obj):
+        """Affiche les informations de session JWT détaillées"""
+        try:
+            token_info = JWTAuthService.get_token_info()
+            if token_info and token_info['username'] == obj.username:
+                status = "Expirée" if token_info['is_expired'] else "Active"
+                return format_html(
+                    '<strong>Statut:</strong> {}<br>'
+                    '<strong>Expiration:</strong> {}<br>'
+                    '<strong>Rôle dans le token:</strong> {}',
+                    status,
+                    token_info['expires_at'],
+                    token_info['role']
+                )
+            else:
+                return "Aucune session JWT active"
+        except Exception as e:
+            return f"Erreur: {e}"
+
+    jwt_session_info.short_description = 'Informations session JWT'
 
 
 @admin.register(Client)
