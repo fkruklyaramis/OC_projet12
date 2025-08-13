@@ -2,7 +2,6 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.core.exceptions import ValidationError
 
-# Import sécurisé du modèle User
 try:
     User = get_user_model()
 except Exception:
@@ -29,20 +28,16 @@ class AuthService:
         if not User:
             raise Exception("Modèle User non disponible")
 
-        # Validation des champs obligatoires
         if not all([username, email, password, role, employee_number, first_name, last_name]):
             raise ValidationError("Tous les champs sont obligatoires")
 
-        # Validation du rôle/département
         valid_roles = ['COMMERCIAL', 'SUPPORT', 'GESTION']
         if role not in valid_roles:
             raise ValidationError(f"Rôle invalide. Doit être un de: {valid_roles}")
 
-        # Vérifier l'unicité du numéro d'employé
         if User.objects.filter(employee_number=employee_number).exists():
             raise ValidationError("Ce numéro d'employé existe déjà")
 
-        # Créer l'utilisateur
         user = User.objects.create_user(
             username=username,
             email=email,
@@ -65,7 +60,7 @@ class PermissionService:
 
     @staticmethod
     def can_view_all_clients(user):
-        """Tous peuvent voir les clients (lecture seule)"""
+        """Tous peuvent voir les clients (avec restrictions selon le rôle)"""
         return True
 
     @staticmethod
@@ -83,6 +78,11 @@ class PermissionService:
         return user.role == 'GESTION'
 
     @staticmethod
+    def can_view_all_contracts(user):
+        """Tous peuvent voir les contrats (avec restrictions selon le rôle)"""
+        return True
+
+    @staticmethod
     def can_update_contract(user, contract):
         """Gestion peut modifier tous, Commercial ses contrats"""
         if user.role == 'GESTION':
@@ -95,6 +95,11 @@ class PermissionService:
     def can_create_events(user):
         """Commercial peut créer des événements pour ses clients"""
         return user.role in ['COMMERCIAL', 'GESTION']
+
+    @staticmethod
+    def can_view_all_events(user):
+        """Tous peuvent voir les événements (avec restrictions selon le rôle)"""
+        return True
 
     @staticmethod
     def can_assign_support(user):
@@ -118,7 +123,7 @@ class PermissionService:
     @staticmethod
     def get_user_permissions(user):
         """Retourne la liste des permissions de l'utilisateur"""
-        permissions = ['view_all_data']  # Tous peuvent voir
+        permissions = ['view_all_data']
 
         if user.role == 'COMMERCIAL':
             permissions.extend([
