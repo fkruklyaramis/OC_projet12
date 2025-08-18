@@ -76,6 +76,113 @@ erDiagram
 - **SUPPORT** : Gère les événements
 - **GESTION** : Accès complet (création d'utilisateurs, contrats, assignation supports)
 
+## Système de rôles et permissions
+
+### Vue d'ensemble
+Le système Epic Events CRM utilise un modèle de permissions basé sur les rôles pour contrôler l'accès aux données et aux fonctionnalités. Chaque utilisateur appartient à un département (rôle) qui détermine ses permissions.
+
+### Rôles et responsabilités
+
+#### 🛒 COMMERCIAL
+**Responsabilités :**
+- Prospection et acquisition de nouveaux clients
+- Gestion de la relation client
+- Suivi des contrats de leurs clients
+- Création d'événements pour les contrats signés
+
+**Permissions accordées :**
+- ✅ **Visualisation** : Voir tous les clients, contrats et événements
+- ✅ **Clients** : Créer et modifier leurs propres clients
+- ✅ **Contrats** : Modifier leurs propres contrats (montants, statut)
+- ✅ **Événements** : Créer des événements pour leurs contrats signés
+- ❌ **Restrictions** : Ne peut pas créer de contrats ni gérer les utilisateurs
+
+**Données accessibles :**
+- Tous les clients (lecture seule, sauf leurs propres clients)
+- Tous les contrats (lecture seule, sauf leurs propres contrats)
+- Tous les événements (lecture seule)
+- Modification limitée à leurs propres données
+
+#### 🔧 SUPPORT
+**Responsabilités :**
+- Gestion technique des événements
+- Support client pendant les événements
+- Mise à jour des détails d'événements
+
+**Permissions accordées :**
+- ✅ **Visualisation** : Voir tous les clients, contrats et événements
+- ✅ **Événements** : Modifier leurs événements assignés
+- ❌ **Restrictions** : Pas de création/modification de clients ou contrats
+
+**Données accessibles :**
+- Tous les clients (lecture seule)
+- Tous les contrats (lecture seule)
+- Tous les événements (lecture seule, modification des leurs)
+
+#### 👔 GESTION
+**Responsabilités :**
+- Supervision générale du CRM
+- Création et gestion des utilisateurs
+- Création et gestion des contrats
+- Assignation des supports aux événements
+
+**Permissions accordées :**
+- ✅ **Accès complet** : Toutes les opérations sur toutes les données
+- ✅ **Utilisateurs** : Créer, modifier, supprimer des utilisateurs
+- ✅ **Clients** : Créer et modifier tous les clients
+- ✅ **Contrats** : Créer et modifier tous les contrats
+- ✅ **Événements** : Créer, modifier et assigner des supports
+- ✅ **Administration** : Accès à l'interface d'administration Django
+
+**Données accessibles :**
+- Accès total à toutes les données sans restrictions
+
+### Matrice des permissions
+
+| Action | COMMERCIAL | SUPPORT | GESTION |
+|--------|------------|---------|---------|
+| **Consultation des données** |
+| Voir tous les clients | ✅ | ✅ | ✅ |
+| Voir tous les contrats | ✅ | ✅ | ✅ |
+| Voir tous les événements | ✅ | ✅ | ✅ |
+| **Gestion des clients** |
+| Créer des clients | ✅ | ❌ | ✅ |
+| Modifier ses clients | ✅ | ❌ | ✅ |
+| Modifier tous les clients | ❌ | ❌ | ✅ |
+| **Gestion des contrats** |
+| Créer des contrats | ❌ | ❌ | ✅ |
+| Modifier ses contrats | ✅ | ❌ | ✅ |
+| Modifier tous les contrats | ❌ | ❌ | ✅ |
+| **Gestion des événements** |
+| Créer des événements | ✅* | ❌ | ✅ |
+| Modifier ses événements | ❌ | ✅ | ✅ |
+| Modifier tous les événements | ❌ | ❌ | ✅ |
+| Assigner des supports | ❌ | ❌ | ✅ |
+| **Administration** |
+| Gérer les utilisateurs | ❌ | ❌ | ✅ |
+| Accès admin Django | ❌ | ❌ | ✅ |
+
+*\*Uniquement pour leurs contrats signés*
+
+### Règles de sécurité
+
+#### Filtrage automatique des données
+- **COMMERCIAL** : Voit toutes les données mais ne peut modifier que ses propres clients/contrats
+- **SUPPORT** : Voit toutes les données mais ne peut modifier que ses événements assignés
+- **GESTION** : Aucune restriction, accès complet
+
+#### Validation des permissions
+- Chaque action est vérifiée par le `PermissionService`
+- Les tokens JWT incluent le rôle de l'utilisateur
+- L'interface CLI respecte automatiquement les permissions
+- L'API Django admin applique les restrictions par rôle
+
+#### Sécurité des tokens
+- Tokens JWT avec expiration (8 heures par défaut)
+- Stockage sécurisé local (`~/.epicevents_token`)
+- Rafraîchissement automatique avant expiration
+- Révocation immédiate à la déconnexion
+
 ### Workflow métier
 ```
 Commercial → Crée Client
