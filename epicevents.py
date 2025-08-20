@@ -1,20 +1,51 @@
-import click
+import rich_click as click
+from rich.console import Console
+from rich.panel import Panel
+from rich import box
 from src.database.init_db import init_database
 from src.views.auth_view import AuthView
 from src.views.client_view import ClientView
 from src.views.contract_view import ContractView
 from src.views.event_view import EventView
 
+# Configuration Rich-Click
+click.rich_click.USE_RICH_MARKUP = True
+click.rich_click.USE_MARKDOWN = True
+click.rich_click.SHOW_ARGUMENTS = True
+click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
+click.rich_click.STYLE_ERRORS_SUGGESTION = "magenta italic"
+click.rich_click.ERRORS_SUGGESTION = (
+    "Essayez 'python epicevents.py --help' pour plus d'informations."
+)
+
+console = Console()
+
 
 @click.group()
 def cli():
-    """Epic Events CRM - Système de gestion des événements"""
-    pass
+    """
+    [bold cyan]Epic Events CRM[/bold cyan] - Système de gestion des événements
+
+    Application de gestion de la relation client pour Epic Events.
+    Gérez vos clients, contrats et événements en toute simplicité.
+    """
+    # Afficher le logo au démarrage
+    logo = """
+[bold cyan]
+    ███████╗██████╗ ██╗ ██████╗    ███████╗██╗   ██╗███████╗███╗   ██╗████████╗███████╗
+    ██╔════╝██╔══██╗██║██╔════╝    ██╔════╝██║   ██║██╔════╝████╗  ██║╚══██╔══╝██╔════╝
+    █████╗  ██████╔╝██║██║         █████╗  ██║   ██║█████╗  ██╔██╗ ██║   ██║   ███████╗
+    ██╔══╝  ██╔═══╝ ██║██║         ██╔══╝  ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║   ██║   ╚════██║
+    ███████╗██║     ██║╚██████╗    ███████╗ ╚████╔╝ ███████╗██║ ╚████║   ██║   ███████║
+    ╚══════╝╚═╝     ╚═╝ ╚═════╝    ╚══════╝  ╚═══╝  ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝
+[/bold cyan]
+    """
+    console.print(Panel(logo, box=box.DOUBLE, style="cyan"))
 
 
-# === COMMANDES D'AUTHENTIFICATION ===
+# Commandes d'authentification
 @cli.command()
-@click.option('--email', help='Adresse email')
+@click.option('--email', help='Adresse email de connexion')
 def login(email):
     """Se connecter à Epic Events CRM"""
     auth_view = AuthView()
@@ -30,34 +61,48 @@ def logout():
 
 @cli.command()
 def status():
-    """Afficher le statut de connexion"""
+    """Afficher le statut de connexion actuel"""
     auth_view = AuthView()
     auth_view.status_command()
 
 
 @cli.command()
 def whoami():
-    """Afficher l'utilisateur actuel"""
+    """Afficher l'utilisateur actuellement connecté"""
     auth_view = AuthView()
     auth_view.whoami_command()
 
 
-# === COMMANDE D'INITIALISATION ===
+# Commande d'initialisation
 @cli.command()
 def init():
     """Initialiser la base de données avec des données d'exemple"""
-    if init_database():
-        click.echo("Base de données initialisée avec succès!")
-        click.echo("Vous pouvez maintenant vous connecter avec:")
-        click.echo("  python epicevents.py login --email admin@epicevents.com")
+    console.print("\n[bold yellow]Initialisation de la base de données...[/bold yellow]")
+
+    with console.status("[bold green]Création des tables et données..."):
+        success = init_database()
+
+    if success:
+        success_content = """
+[bold green]Base de données initialisée avec succès ![/bold green]
+
+[cyan]Comptes disponibles:[/cyan]
+• [yellow]admin@epicevents.com[/yellow] (mot de passe: Admin123!) - GESTION
+• [yellow]marie.martin@epicevents.com[/yellow] (mot de passe: Commercial123!) - COMMERCIAL
+• [yellow]sophie.bernard@epicevents.com[/yellow] (mot de passe: Support123!) - SUPPORT
+
+[cyan]Commande de connexion:[/cyan]
+[dim]python epicevents.py login --email admin@epicevents.com[/dim]
+        """
+        console.print(Panel(success_content, title="INITIALISATION RÉUSSIE", style="green", box=box.ROUNDED))
     else:
-        click.echo("Erreur lors de l'initialisation de la base de données")
+        console.print("[bold red]Erreur lors de l'initialisation de la base de données[/bold red]")
 
 
-# === COMMANDES CLIENTS ===
+# Groupe clients
 @cli.group()
 def client():
-    """Gestion des clients"""
+    """Gestion des clients et prospects"""
     pass
 
 
@@ -71,21 +116,21 @@ def list_clients(mine):
 
 @client.command('search')
 def search_clients():
-    """Rechercher des clients"""
+    """Rechercher des clients par critères"""
     client_view = ClientView()
     client_view.search_clients_command()
 
 
-# === COMMANDES CONTRATS ===
+# Groupe contrats
 @cli.group()
 def contract():
-    """Gestion des contrats"""
+    """Gestion des contrats et devis"""
     pass
 
 
 @contract.command('list')
 def list_contracts():
-    """Lister tous les contrats"""
+    """Lister tous les contrats (gestion uniquement)"""
     contract_view = ContractView()
     contract_view.list_all_contracts_command()
 
@@ -114,28 +159,28 @@ def unpaid_contracts():
 @contract.command('view')
 @click.argument('contract_id', type=int)
 def view_contract(contract_id):
-    """Voir les détails d'un contrat"""
+    """Voir les détails d'un contrat spécifique"""
     contract_view = ContractView()
     contract_view.view_contract_command(contract_id)
 
 
 @contract.command('search')
 def search_contracts():
-    """Rechercher des contrats"""
+    """Rechercher des contrats par critères"""
     contract_view = ContractView()
     contract_view.search_contracts_command()
 
 
-# === COMMANDES EVENEMENTS ===
+# Groupe événements
 @cli.group()
 def event():
-    """Gestion des événements"""
+    """Gestion des événements et manifestations"""
     pass
 
 
 @event.command('list')
 def list_events():
-    """Lister tous les événements"""
+    """Lister tous les événements (gestion uniquement)"""
     event_view = EventView()
     event_view.list_all_events_command()
 
@@ -165,14 +210,14 @@ def unassigned_events():
 @event.command('view')
 @click.argument('event_id', type=int)
 def view_event(event_id):
-    """Voir les détails d'un événement"""
+    """Voir les détails d'un événement spécifique"""
     event_view = EventView()
     event_view.view_event_command(event_id)
 
 
 @event.command('search')
 def search_events():
-    """Rechercher des événements"""
+    """Rechercher des événements par critères"""
     event_view = EventView()
     event_view.search_events_command()
 
