@@ -17,7 +17,7 @@ class ContractView(BaseView):
         self.db = SessionLocal()
         self.contract_controller = ContractController(self.db)
         self.auth_service = AuthenticationService(self.db)
-        
+
         current_user = self.auth_service.get_current_user()
         if current_user:
             self.contract_controller.set_current_user(current_user)
@@ -33,9 +33,9 @@ class ContractView(BaseView):
             self.contract_controller.set_current_user(current_user)
 
             contracts = self.contract_controller.get_all_contracts()
-            
+
             self.display_info("=== TOUS LES CONTRATS ===")
-            
+
             if not contracts:
                 self.display_info("Aucun contrat trouve")
                 return
@@ -58,9 +58,9 @@ class ContractView(BaseView):
                 return
 
             contracts = self.contract_controller.get_my_contracts()
-            
+
             self.display_info("=== MES CONTRATS ===")
-            
+
             if not contracts:
                 self.display_info("Aucun contrat trouve")
                 return
@@ -79,15 +79,15 @@ class ContractView(BaseView):
             self.contract_controller.set_current_user(current_user)
 
             contracts = self.contract_controller.get_unsigned_contracts()
-            
+
             role_info = ""
             if current_user.is_commercial:
                 role_info = " (MES CONTRATS)"
             elif current_user.is_support:
                 role_info = " (CONTRATS AVEC MES EVENEMENTS)"
-            
+
             self.display_info(f"=== CONTRATS NON SIGNES{role_info} ===")
-            
+
             if not contracts:
                 self.display_info("Aucun contrat non signe trouve")
                 return
@@ -106,15 +106,15 @@ class ContractView(BaseView):
             self.contract_controller.set_current_user(current_user)
 
             contracts = self.contract_controller.get_unpaid_contracts()
-            
+
             role_info = ""
             if current_user.is_commercial:
                 role_info = " (MES CONTRATS)"
             elif current_user.is_support:
                 role_info = " (CONTRATS AVEC MES EVENEMENTS)"
-            
+
             self.display_info(f"=== CONTRATS AVEC MONTANTS DUS{role_info} ===")
-            
+
             if not contracts:
                 self.display_info("Aucun contrat avec montant du trouve")
                 return
@@ -157,9 +157,9 @@ class ContractView(BaseView):
                 role_info = " (DANS MES EVENEMENTS)"
 
             self.display_info(f"=== RECHERCHE DE CONTRATS{role_info} ===")
-            
+
             criteria = {}
-            
+
             client_name = self.get_user_input("Nom du client (optionnel)")
             if client_name:
                 criteria['client_name'] = client_name
@@ -174,7 +174,7 @@ class ContractView(BaseView):
                 '3': 'Annule',
                 '0': 'Tous'
             }
-            
+
             status_choice = self.get_user_choice(status_display, "Statut")
             if status_choice != '0':
                 status_options = {
@@ -189,7 +189,7 @@ class ContractView(BaseView):
                 return
 
             contracts = self.contract_controller.search_contracts(**criteria)
-            
+
             if contracts:
                 self.display_success(f"{len(contracts)} contrat(s) trouve(s)")
                 self._display_contracts_table(contracts)
@@ -216,12 +216,12 @@ class ContractView(BaseView):
         print(f"Cree le: {contract.created_at.strftime('%Y-%m-%d %H:%M')}")
         if contract.updated_at:
             print(f"Modifie le: {contract.updated_at.strftime('%Y-%m-%d %H:%M')}")
-        
+
         if contract.events:
             print(f"\nEvenements associes: {len(contract.events)}")
             for event in contract.events:
-                support_name = (event.support_contact.full_name 
-                               if event.support_contact else "Non assigne")
+                support_name = (event.support_contact.full_name[:14]
+                                if event.support_contact else "Non assigne")
                 print(f"  - {event.name} ({event.start_date.strftime('%Y-%m-%d')}) "
                       f"- Support: {support_name}")
 
@@ -231,7 +231,7 @@ class ContractView(BaseView):
                  f"{'Du':<12} {'Statut':<10} {'Commercial':<20}"
         print(header)
         print("-" * len(header))
-        
+
         for contract in contracts:
             commercial_name = contract.commercial_contact.full_name[:19]
             status_display = contract.status.value

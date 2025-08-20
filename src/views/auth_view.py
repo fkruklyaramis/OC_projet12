@@ -2,7 +2,7 @@ import getpass
 from sqlalchemy.orm import sessionmaker
 from src.database.connection import engine
 from src.services.auth_service import AuthenticationService
-from src.utils.auth_utils import AuthenticationError, AuthorizationError
+from src.utils.auth_utils import AuthenticationError
 from .base_view import BaseView
 
 
@@ -26,11 +26,11 @@ class AuthView(BaseView):
                 current_user = self.auth_service.get_current_user()
                 if current_user:
                     self.display_info(f"Deja connecte en tant que: {current_user.full_name} "
-                                     f"({current_user.email})")
-                    
+                                      f"({current_user.email})")
+
                     if not self.confirm_action("Voulez-vous vous reconnecter?"):
                         return
-                    
+
                     self.auth_service.logout()
 
             if not email:
@@ -73,15 +73,15 @@ class AuthView(BaseView):
             if self.auth_service.is_authenticated():
                 user_data = self.auth_service.get_token_info()
                 current_user = self.auth_service.get_current_user()
-                
+
                 if current_user and user_data:
                     print("=== STATUT DE CONNEXION ===")
-                    print(f"Connecte: OUI")
+                    print("Connecte: OUI")
                     print(f"Utilisateur: {current_user.full_name}")
                     print(f"Email: {current_user.email}")
                     print(f"Departement: {current_user.department.value}")
                     print(f"Numero employe: {current_user.employee_number}")
-                    
+
                     from datetime import datetime, timezone
                     exp_timestamp = user_data.get('exp')
                     if exp_timestamp:

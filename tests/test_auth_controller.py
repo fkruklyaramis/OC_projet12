@@ -1,5 +1,4 @@
 import pytest
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.database.connection import Base
@@ -48,7 +47,7 @@ def test_create_user_success(admin_user):
         full_name="Test User",
         department=Department.COMMERCIAL
     )
-    
+
     assert user.email == "test@epicevents.com"
     assert user.full_name == "Test User"
     assert user.department == Department.COMMERCIAL
@@ -75,7 +74,7 @@ def test_create_user_duplicate_email(admin_user):
         full_name="Test User",
         department=Department.COMMERCIAL
     )
-    
+
     with pytest.raises(ValueError, match="email est déjà utilisé"):
         admin_user.create_user(
             email="test@epicevents.com",
@@ -99,7 +98,7 @@ def test_unauthorized_user_creation(auth_controller):
 def test_authenticate_valid_user(db_session):
     """Tester l'authentification avec des identifiants valides"""
     from src.utils.hash_utils import hash_password
-    
+
     user = User(
         employee_number="EE000002",
         email="user@epicevents.com",
@@ -109,13 +108,13 @@ def test_authenticate_valid_user(db_session):
     )
     db_session.add(user)
     db_session.commit()
-    
+
     auth_controller = AuthController(db_session)
     authenticated_user = auth_controller.authenticate_user(
         "user@epicevents.com",
         "TestPass123!"
     )
-    
+
     assert authenticated_user.email == "user@epicevents.com"
     assert authenticated_user.full_name == "Valid User"
 
@@ -123,7 +122,7 @@ def test_authenticate_valid_user(db_session):
 def test_authenticate_invalid_password(db_session):
     """Tester l'authentification avec un mot de passe invalide"""
     from src.utils.hash_utils import hash_password
-    
+
     user = User(
         employee_number="EE000003",
         email="user@epicevents.com",
@@ -133,9 +132,9 @@ def test_authenticate_invalid_password(db_session):
     )
     db_session.add(user)
     db_session.commit()
-    
+
     auth_controller = AuthController(db_session)
-    
+
     with pytest.raises(AuthenticationError, match="Mot de passe incorrect"):
         auth_controller.authenticate_user("user@epicevents.com", "WrongPass")
 
@@ -143,7 +142,7 @@ def test_authenticate_invalid_password(db_session):
 def test_authenticate_nonexistent_user(db_session):
     """Tester l'authentification d'un utilisateur inexistant"""
     auth_controller = AuthController(db_session)
-    
+
     with pytest.raises(AuthenticationError, match="Utilisateur non trouvé"):
         auth_controller.authenticate_user("nonexistent@epicevents.com", "AnyPass123!")
 
@@ -164,10 +163,10 @@ def test_permission_check_commercial(admin_user):
         full_name="Commercial User",
         department=Department.COMMERCIAL
     )
-    
+
     commercial_controller = AuthController(admin_user.db)
     commercial_controller.set_current_user(commercial_user)
-    
+
     assert commercial_controller.check_permission('create_client') is True
     assert commercial_controller.check_permission('create_user') is False
     assert commercial_controller.check_permission('delete_user') is False
@@ -182,10 +181,10 @@ def test_permission_check_support(admin_user):
         full_name="Support User",
         department=Department.SUPPORT
     )
-    
+
     support_controller = AuthController(admin_user.db)
     support_controller.set_current_user(support_user)
-    
+
     assert support_controller.check_permission('create_client') is False
     assert support_controller.check_permission('create_user') is False
     assert support_controller.check_permission('read_event') is True
@@ -200,16 +199,16 @@ def test_change_password_success(admin_user):
         full_name="Change Pass User",
         department=Department.COMMERCIAL
     )
-    
+
     user_controller = AuthController(admin_user.db)
     user_controller.set_current_user(user)
-    
+
     result = user_controller.change_password(
         user.id,
         "OldPass123!",
         "NewPass456!"
     )
-    
+
     assert result is True
 
 
@@ -221,10 +220,10 @@ def test_change_password_wrong_old_password(admin_user):
         full_name="Wrong Old User",
         department=Department.COMMERCIAL
     )
-    
+
     user_controller = AuthController(admin_user.db)
     user_controller.set_current_user(user)
-    
+
     with pytest.raises(AuthenticationError, match="Ancien mot de passe incorrect"):
         user_controller.change_password(user.id, "WrongOldPass", "NewPass456!")
 
@@ -237,9 +236,9 @@ def test_logout(auth_controller, admin_user):
         full_name="Logout User",
         department=Department.COMMERCIAL
     )
-    
+
     auth_controller.set_current_user(user)
     assert auth_controller.current_user is not None
-    
+
     auth_controller.logout()
     assert auth_controller.current_user is None

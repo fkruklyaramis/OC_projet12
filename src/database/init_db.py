@@ -30,7 +30,7 @@ def create_sample_data(session):
         department=Department.GESTION
     )
     session.add(admin)
-    
+
     # Commercial 1
     commercial1 = User(
         employee_number="EE000002",
@@ -40,7 +40,7 @@ def create_sample_data(session):
         department=Department.COMMERCIAL
     )
     session.add(commercial1)
-    
+
     # Commercial 2
     commercial2 = User(
         employee_number="EE000003",
@@ -50,7 +50,7 @@ def create_sample_data(session):
         department=Department.COMMERCIAL
     )
     session.add(commercial2)
-    
+
     # Support 1
     support1 = User(
         employee_number="EE000004",
@@ -60,7 +60,7 @@ def create_sample_data(session):
         department=Department.SUPPORT
     )
     session.add(support1)
-    
+
     # Support 2
     support2 = User(
         employee_number="EE000005",
@@ -70,13 +70,13 @@ def create_sample_data(session):
         department=Department.SUPPORT
     )
     session.add(support2)
-    
+
     session.commit()
     print("5 utilisateurs crees.")
-    
+
     # 2. Creer des clients
     print("Creation des clients...")
-    
+
     client1 = Client(
         full_name="Alice Rousseau",
         email="alice@techcorp.com",
@@ -85,7 +85,7 @@ def create_sample_data(session):
         commercial_contact_id=commercial1.id
     )
     session.add(client1)
-    
+
     client2 = Client(
         full_name="Bob Moreau",
         email="bob@innovate.fr",
@@ -94,7 +94,7 @@ def create_sample_data(session):
         commercial_contact_id=commercial1.id
     )
     session.add(client2)
-    
+
     client3 = Client(
         full_name="Catherine Leroy",
         email="c.leroy@startup.com",
@@ -103,7 +103,7 @@ def create_sample_data(session):
         commercial_contact_id=commercial2.id
     )
     session.add(client3)
-    
+
     client4 = Client(
         full_name="David Lambert",
         email="d.lambert@bigcorp.fr",
@@ -112,13 +112,13 @@ def create_sample_data(session):
         commercial_contact_id=commercial2.id
     )
     session.add(client4)
-    
+
     session.commit()
     print("4 clients crees.")
-    
+
     # 3. Creer des contrats
     print("Creation des contrats...")
-    
+
     # Contrat signe avec evenement
     contract1 = Contract(
         client_id=client1.id,
@@ -130,7 +130,7 @@ def create_sample_data(session):
         signed_at=datetime.now() - timedelta(days=30)
     )
     session.add(contract1)
-    
+
     # Contrat signe avec montant du
     contract2 = Contract(
         client_id=client2.id,
@@ -142,7 +142,7 @@ def create_sample_data(session):
         signed_at=datetime.now() - timedelta(days=15)
     )
     session.add(contract2)
-    
+
     # Contrat non signe
     contract3 = Contract(
         client_id=client3.id,
@@ -153,7 +153,7 @@ def create_sample_data(session):
         signed=False
     )
     session.add(contract3)
-    
+
     # Contrat signe recemment
     contract4 = Contract(
         client_id=client4.id,
@@ -165,13 +165,13 @@ def create_sample_data(session):
         signed_at=datetime.now() - timedelta(days=5)
     )
     session.add(contract4)
-    
+
     session.commit()
     print("4 contrats crees.")
-    
+
     # 4. Creer des evenements
     print("Creation des evenements...")
-    
+
     # Evenement passe avec support assigne
     event1 = Event(
         contract_id=contract1.id,
@@ -184,7 +184,7 @@ def create_sample_data(session):
         notes="Evenement reussi, client satisfait"
     )
     session.add(event1)
-    
+
     # Evenement a venir avec support
     event2 = Event(
         contract_id=contract2.id,
@@ -197,7 +197,7 @@ def create_sample_data(session):
         notes="Preparation en cours"
     )
     session.add(event2)
-    
+
     # Evenement sans support assigne
     event3 = Event(
         contract_id=contract4.id,
@@ -210,7 +210,7 @@ def create_sample_data(session):
         notes="En attente d'assignation support"
     )
     session.add(event3)
-    
+
     # Evenement urgent (bientot)
     event4 = Event(
         contract_id=contract1.id,
@@ -223,10 +223,10 @@ def create_sample_data(session):
         notes="Formation technique pour les employes"
     )
     session.add(event4)
-    
+
     session.commit()
     print("4 evenements crees.")
-    
+
     print("\n=== DONNEES CREEES ===")
     print("Utilisateurs:")
     print("- admin@epicevents.com (mot de passe: Admin123!) - GESTION")
@@ -247,25 +247,25 @@ def init_database():
         print("Creation des tables...")
         Base.metadata.create_all(bind=engine)
         print("Tables creees avec succes.")
-        
+
         # Creer une session
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()
-        
+
         try:
             # Creer les donnees d'exemple
             create_sample_data(session)
-            
+
             print("\nBase de donnees initialisee avec succes!")
             return True
-            
+
         except Exception as e:
             session.rollback()
             print(f"Erreur lors de la creation des donnees: {e}")
             return False
         finally:
             session.close()
-            
+
     except Exception as e:
         print(f"Erreur lors de l'initialisation: {e}")
         return False

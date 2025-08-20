@@ -12,15 +12,15 @@ class Event(Base):
     location = Column(String(500), nullable=False)
     attendees = Column(Integer, nullable=False)
     notes = Column(Text, nullable=True)
-    
+
     # Dates
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
-    
+
     # Relations
     contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
     support_contact_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

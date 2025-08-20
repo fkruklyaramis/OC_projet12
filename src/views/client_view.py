@@ -1,5 +1,4 @@
-import click
-from typing import List, Optional
+from typing import List
 from sqlalchemy.orm import sessionmaker
 from src.database.connection import engine
 from src.controllers.client_controller import ClientController
@@ -18,7 +17,7 @@ class ClientView(BaseView):
         self.db = SessionLocal()
         self.client_controller = ClientController(self.db)
         self.auth_service = AuthenticationService(self.db)
-        
+
         current_user = self.auth_service.get_current_user()
         if current_user:
             self.client_controller.set_current_user(current_user)
@@ -34,7 +33,7 @@ class ClientView(BaseView):
             self.client_controller.set_current_user(current_user)
 
             self.display_info("=== CREATION D'UN NOUVEAU CLIENT ===")
-            
+
             full_name = self.get_user_input("Nom complet")
             email = self.get_user_input("Email")
             phone = self.get_user_input("Telephone")
@@ -74,7 +73,7 @@ class ClientView(BaseView):
                 title = "=== TOUS LES CLIENTS ==="
 
             self.display_info(title)
-            
+
             if not clients:
                 self.display_info("Aucun client trouve")
                 return
@@ -101,7 +100,7 @@ class ClientView(BaseView):
             self._display_client_details(client)
 
             updates = {}
-            
+
             new_name = self.get_user_input(f"Nom complet [{client.full_name}]")
             if new_name:
                 updates['full_name'] = new_name
@@ -141,9 +140,9 @@ class ClientView(BaseView):
             self.client_controller.set_current_user(current_user)
 
             self.display_info("=== RECHERCHE DE CLIENTS ===")
-            
+
             criteria = {}
-            
+
             company_search = self.get_user_input("Nom d'entreprise (optionnel)")
             if company_search:
                 criteria['company_name'] = company_search
@@ -161,7 +160,7 @@ class ClientView(BaseView):
                 return
 
             clients = self.client_controller.search_clients(**criteria)
-            
+
             if clients:
                 self.display_success(f"{len(clients)} client(s) trouve(s)")
                 self._display_clients_table(clients)
@@ -190,10 +189,10 @@ class ClientView(BaseView):
         header = f"{'ID':<5} {'Nom':<20} {'Entreprise':<20} {'Email':<30} {'Commercial':<20}"
         print(header)
         print("-" * len(header))
-        
+
         for client in clients:
-            commercial_name = (client.commercial_contact.full_name 
-                             if client.commercial_contact else "N/A")
+            commercial_name = (client.commercial_contact.full_name
+                               if client.commercial_contact else "N/A")
             print(f"{client.id:<5} {client.full_name[:19]:<20} "
                   f"{client.company_name[:19]:<20} {client.email[:29]:<30} "
                   f"{commercial_name[:19]:<20}")

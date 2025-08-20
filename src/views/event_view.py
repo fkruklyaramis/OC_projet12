@@ -17,7 +17,7 @@ class EventView(BaseView):
         self.db = SessionLocal()
         self.event_controller = EventController(self.db)
         self.auth_service = AuthenticationService(self.db)
-        
+
         current_user = self.auth_service.get_current_user()
         if current_user:
             self.event_controller.set_current_user(current_user)
@@ -33,9 +33,9 @@ class EventView(BaseView):
             self.event_controller.set_current_user(current_user)
 
             events = self.event_controller.get_all_events()
-            
+
             self.display_info("=== TOUS LES EVENEMENTS ===")
-            
+
             if not events:
                 self.display_info("Aucun événement trouvé")
                 return
@@ -54,15 +54,15 @@ class EventView(BaseView):
             self.event_controller.set_current_user(current_user)
 
             events = self.event_controller.get_my_events()
-            
+
             role_info = ""
             if current_user.is_support:
                 role_info = " (ASSIGNES A MOI)"
             elif current_user.is_commercial:
                 role_info = " (MES CONTRATS)"
-            
+
             self.display_info(f"=== MES EVENEMENTS{role_info} ===")
-            
+
             if not events:
                 self.display_info("Aucun événement trouvé")
                 return
@@ -81,15 +81,15 @@ class EventView(BaseView):
             self.event_controller.set_current_user(current_user)
 
             events = self.event_controller.get_upcoming_events(days_ahead)
-            
+
             role_info = ""
             if current_user.is_support:
                 role_info = " (MES ASSIGNATIONS)"
             elif current_user.is_commercial:
                 role_info = " (MES CONTRATS)"
-            
+
             self.display_info(f"=== EVENEMENTS A VENIR ({days_ahead} JOURS){role_info} ===")
-            
+
             if not events:
                 self.display_info(f"Aucun événement dans les {days_ahead} prochains jours")
                 return
@@ -108,9 +108,9 @@ class EventView(BaseView):
             self.event_controller.set_current_user(current_user)
 
             events = self.event_controller.get_events_without_support()
-            
+
             self.display_info("=== EVENEMENTS SANS SUPPORT ASSIGNE ===")
-            
+
             if not events:
                 self.display_info("Aucun événement sans support trouvé")
                 return
@@ -153,9 +153,9 @@ class EventView(BaseView):
                 role_info = " (MES CONTRATS)"
 
             self.display_info(f"=== RECHERCHE D'EVENEMENTS{role_info} ===")
-            
+
             criteria = {}
-            
+
             name = self.get_user_input("Nom de l'événement (optionnel)")
             if name:
                 criteria['name'] = name
@@ -183,7 +183,7 @@ class EventView(BaseView):
                 return
 
             events = self.event_controller.search_events(**criteria)
-            
+
             if events:
                 self.display_success(f"{len(events)} événement(s) trouvé(s)")
                 self._display_events_table(events)
@@ -204,21 +204,21 @@ class EventView(BaseView):
         print(f"Date début: {event.start_date.strftime('%Y-%m-%d %H:%M')}")
         print(f"Date fin: {event.end_date.strftime('%Y-%m-%d %H:%M')}")
         print(f"Durée: {event.duration_days} jour(s)")
-        
+
         if event.support_contact:
             print(f"Support assigné: {event.support_contact.full_name}")
         else:
             print("Support assigné: Non assigné")
-        
+
         print(f"Contrat ID: {event.contract_id}")
         if event.contract:
             print(f"Client: {event.contract.client.full_name}")
             print(f"Entreprise: {event.contract.client.company_name}")
             print(f"Commercial: {event.contract.commercial_contact.full_name}")
-        
+
         if event.notes:
             print(f"Notes: {event.notes}")
-        
+
         print(f"Créé le: {event.created_at.strftime('%Y-%m-%d %H:%M')}")
         if event.updated_at:
             print(f"Modifié le: {event.updated_at.strftime('%Y-%m-%d %H:%M')}")
@@ -229,12 +229,12 @@ class EventView(BaseView):
                  f"{'Lieu':<20} {'Support':<15}"
         print(header)
         print("-" * len(header))
-        
+
         for event in events:
             client_name = event.contract.client.full_name[:19] if event.contract else "N/A"
-            support_name = (event.support_contact.full_name[:14] 
-                           if event.support_contact else "Non assigné")
+            support_name = (event.support_contact.full_name[:14]
+                            if event.support_contact else "Non assigné")
             date_str = event.start_date.strftime('%Y-%m-%d')
-            
+
             print(f"{event.id:<5} {event.name[:24]:<25} {client_name:<20} "
                   f"{date_str:<12} {event.location[:19]:<20} {support_name:<15}")

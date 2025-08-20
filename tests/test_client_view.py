@@ -59,34 +59,34 @@ def test_client(db_session, commercial_user):
 @patch('src.views.client_view.ClientView.get_user_input')
 def test_create_client_command_success(mock_input, temp_token_dir, commercial_user):
     """Tester la creation d'un client avec succes"""
-    mock_input.side_effect = ["New Client", "newclient@company.com", 
+    mock_input.side_effect = ["New Client", "newclient@company.com",
                               "0987654321", "New Company"]
-    
+
     with patch('src.views.client_view.sessionmaker') as mock_sessionmaker:
         engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(engine)
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()
-        
+
         session.add(commercial_user)
         session.commit()
-        
+
         mock_sessionmaker.return_value = MagicMock(return_value=session)
-        
+
         # Simuler une connexion
         with patch('src.services.auth_service.AuthenticationService.require_authentication') \
              as mock_auth:
             mock_auth.return_value = commercial_user
-            
+
             with patch('src.services.auth_service.AuthenticationService.get_current_user') \
                  as mock_current:
                 mock_current.return_value = commercial_user
-                
+
                 client_view = ClientView()
-                
+
                 with patch('builtins.print') as mock_print:
                     client_view.create_client_command()
-                    
+
                     print_calls = [call[0][0] for call in mock_print.call_args_list]
                     success_messages = [msg for msg in print_calls if 'cree avec succes' in msg]
                     assert len(success_messages) > 0
@@ -99,25 +99,25 @@ def test_list_clients_command_empty(temp_token_dir, commercial_user):
         Base.metadata.create_all(engine)
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()
-        
+
         session.add(commercial_user)
         session.commit()
-        
+
         mock_sessionmaker.return_value = MagicMock(return_value=session)
-        
+
         with patch('src.services.auth_service.AuthenticationService.require_authentication') \
              as mock_auth:
             mock_auth.return_value = commercial_user
-            
+
             with patch('src.services.auth_service.AuthenticationService.get_current_user') \
                  as mock_current:
                 mock_current.return_value = commercial_user
-                
+
                 client_view = ClientView()
-                
+
                 with patch('builtins.print') as mock_print:
                     client_view.list_clients_command()
-                    
+
                     print_calls = [call[0][0] for call in mock_print.call_args_list]
                     empty_messages = [msg for msg in print_calls if 'Aucun client trouve' in msg]
                     assert len(empty_messages) > 0
@@ -130,26 +130,26 @@ def test_list_clients_command_with_data(temp_token_dir, commercial_user, test_cl
         Base.metadata.create_all(engine)
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()
-        
+
         session.add(commercial_user)
         session.add(test_client)
         session.commit()
-        
+
         mock_sessionmaker.return_value = MagicMock(return_value=session)
-        
+
         with patch('src.services.auth_service.AuthenticationService.require_authentication') \
              as mock_auth:
             mock_auth.return_value = commercial_user
-            
+
             with patch('src.services.auth_service.AuthenticationService.get_current_user') \
                  as mock_current:
                 mock_current.return_value = commercial_user
-                
+
                 client_view = ClientView()
-                
+
                 with patch('builtins.print') as mock_print:
                     client_view.list_clients_command()
-                    
+
                     print_calls = [call[0][0] for call in mock_print.call_args_list]
                     # Verifier que le tableau d'en-tete est affiche
                     header_messages = [msg for msg in print_calls if 'ID' in msg and 'Nom' in msg]
@@ -160,32 +160,32 @@ def test_list_clients_command_with_data(temp_token_dir, commercial_user, test_cl
 def test_search_clients_command(mock_input, temp_token_dir, commercial_user, test_client):
     """Tester la recherche de clients"""
     mock_input.side_effect = ["Test Company", "", ""]  # Recherche par entreprise uniquement
-    
+
     with patch('src.views.client_view.sessionmaker') as mock_sessionmaker:
         engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(engine)
         SessionLocal = sessionmaker(bind=engine)
         session = SessionLocal()
-        
+
         session.add(commercial_user)
         session.add(test_client)
         session.commit()
-        
+
         mock_sessionmaker.return_value = MagicMock(return_value=session)
-        
+
         with patch('src.services.auth_service.AuthenticationService.require_authentication') \
              as mock_auth:
             mock_auth.return_value = commercial_user
-            
+
             with patch('src.services.auth_service.AuthenticationService.get_current_user') \
                  as mock_current:
                 mock_current.return_value = commercial_user
-                
+
                 client_view = ClientView()
-                
+
                 with patch('builtins.print') as mock_print:
                     client_view.search_clients_command()
-                    
+
                     print_calls = [call[0][0] for call in mock_print.call_args_list]
                     search_messages = [msg for msg in print_calls if 'client(s) trouve(s)' in msg]
                     assert len(search_messages) >= 0  # Peut etre 0 ou plus selon les resultats

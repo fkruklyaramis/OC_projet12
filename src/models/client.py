@@ -12,10 +12,10 @@ class Client(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     phone = Column(String(20), nullable=False)
     company_name = Column(String(255), nullable=False, index=True)
-    
+
     # Relations
     commercial_contact_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

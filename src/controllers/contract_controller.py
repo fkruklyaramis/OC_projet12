@@ -2,7 +2,6 @@ from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from src.models.contract import Contract, ContractStatus
 from src.models.client import Client
-from src.models.user import User, Department
 from src.utils.auth_utils import AuthorizationError, PermissionChecker
 from .base_controller import BaseController
 
@@ -18,11 +17,11 @@ class ContractController(BaseController):
         """Recuperer tous les contrats avec verification des permissions"""
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
-        
+
         # Seule la gestion peut voir TOUS les contrats
         if not self.current_user.is_gestion:
             raise AuthorizationError("Seule la gestion peut consulter tous les contrats")
-        
+
         return self.db.query(Contract).options(
             joinedload(Contract.client),
             joinedload(Contract.commercial_contact)
@@ -32,26 +31,26 @@ class ContractController(BaseController):
         """Recuperer un contrat par son ID avec verification d'acces"""
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
-        
+
         contract = self.db.query(Contract).options(
             joinedload(Contract.client),
             joinedload(Contract.commercial_contact),
             joinedload(Contract.events)
         ).filter(Contract.id == contract_id).first()
-        
+
         if contract and not self._can_access_contract(contract):
             raise AuthorizationError("Acces refuse a ce contrat")
-        
+
         return contract
 
     def get_my_contracts(self) -> List[Contract]:
         """Recuperer les contrats assignes a l'utilisateur actuel"""
         if not self.current_user:
             raise AuthorizationError("Authentification requise")
-        
+
         if not self.current_user.is_commercial:
             raise AuthorizationError("Seuls les commerciaux peuvent consulter leurs contrats")
-        
+
         return self.db.query(Contract).options(
             joinedload(Contract.client),
             joinedload(Contract.commercial_contact)
@@ -61,12 +60,12 @@ class ContractController(BaseController):
         """Recuperer les contrats par statut"""
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
-        
+
         query = self.db.query(Contract).options(
             joinedload(Contract.client),
             joinedload(Contract.commercial_contact)
         ).filter(Contract.status == status)
-        
+
         # Filtre par role utilisateur
         if self.current_user.is_commercial:
             query = query.filter(Contract.commercial_contact_id == self.current_user.id)
@@ -74,7 +73,7 @@ class ContractController(BaseController):
             # Support peut voir les contrats avec des evenements assignes
             from src.models.event import Event
             query = query.join(Event).filter(Event.support_contact_id == self.current_user.id)
-        
+
         return query.all()
 
     def get_unsigned_contracts(self) -> List[Contract]:
@@ -85,73 +84,73 @@ class ContractController(BaseController):
         """Recuperer les contrats avec des montants dus"""
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
-        
+
         query = self.db.query(Contract).options(
             joinedload(Contract.client),
             joinedload(Contract.commercial_contact)
         ).filter(Contract.amount_due > 0)
-        
+
         # Filtre par role utilisateur
         if self.current_user.is_commercial:
             query = query.filter(Contract.commercial_contact_id == self.current_user.id)
         elif self.current_user.is_support:
             from src.models.event import Event
             query = query.join(Event).filter(Event.support_contact_id == self.current_user.id)
-        
+
         return query.all()
 
     def search_contracts(self, **criteria) -> List[Contract]:
         """Rechercher des contrats selon des criteres"""
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
-        
+
         query = self.db.query(Contract).options(
             joinedload(Contract.client),
             joinedload(Contract.commercial_contact)
         )
-        
+
         # Filtre par client
         if 'client_name' in criteria and criteria['client_name']:
             query = query.join(Client).filter(
                 Client.full_name.ilike(f"%{criteria['client_name']}%")
             )
-        
+
         # Filtre par entreprise
         if 'company_name' in criteria and criteria['company_name']:
             query = query.join(Client).filter(
                 Client.company_name.ilike(f"%{criteria['company_name']}%")
             )
-        
+
         # Filtre par statut
         if 'status' in criteria and criteria['status']:
             query = query.filter(Contract.status == criteria['status'])
-        
+
         # Filtre par role utilisateur
         if self.current_user.is_commercial:
             query = query.filter(Contract.commercial_contact_id == self.current_user.id)
         elif self.current_user.is_support:
             from src.models.event import Event
             query = query.join(Event).filter(Event.support_contact_id == self.current_user.id)
-        
+
         return query.all()
 
-    def create_contract(self, client_id: int, total_amount: float, 
-                       amount_due: float = None) -> Contract:
+    def create_contract(self, client_id: int, total_amount: float,
+                        amount_due: float = None) -> Contract:
         """Creer un nouveau contrat"""
         if not self.permission_checker.has_permission(self.current_user, 'create_contract'):
             raise AuthorizationError("Permission requise pour creer des contrats")
-        
+
         # Verifier que le client existe
         client = self.db.query(Client).filter(Client.id == client_id).first()
         if not client:
             raise ValueError("Client non trouve")
-        
+
         # Seul le commercial du client ou la gestion peut creer des contrats
-        if (self.current_user.is_commercial and 
+        if (self.current_user.is_commercial and
             client.commercial_contact_id != self.current_user.id and
-            not self.current_user.is_gestion):
+                not self.current_user.is_gestion):
             raise AuthorizationError("Vous ne pouvez creer des contrats que pour vos clients")
-        
+
         try:
             contract = Contract(
                 client_id=client_id,
@@ -170,17 +169,17 @@ class ContractController(BaseController):
     def update_contract(self, contract_id: int, **kwargs) -> Contract:
         """Modifier un contrat"""
         if not self.permission_checker.has_permission(self.current_user, 'update_contract'):
-            if not (self.current_user.is_commercial and 
-                   self.permission_checker.has_permission(self.current_user, 'update_own_contract')):
+            if not (self.current_user.is_commercial and
+                    self.permission_checker.has_permission(self.current_user, 'update_own_contract')):
                 raise AuthorizationError("Permission requise pour modifier les contrats")
-        
+
         contract = self.get_contract_by_id(contract_id)
         if not contract:
             raise ValueError("Contrat non trouve")
-        
+
         if not self._can_access_contract(contract):
             raise AuthorizationError("Acces refuse a ce contrat")
-        
+
         try:
             forbidden_fields = ['id', 'created_at', 'client_id', 'commercial_contact_id']
             for key, value in kwargs.items():
@@ -188,7 +187,7 @@ class ContractController(BaseController):
                     continue
                 if hasattr(contract, key):
                     setattr(contract, key, value)
-            
+
             self.db.commit()
             self.db.refresh(contract)
             return contract
@@ -200,13 +199,13 @@ class ContractController(BaseController):
         """Verifier si l'utilisateur peut acceder a ce contrat"""
         if self.current_user.is_gestion:
             return True
-        
+
         if self.current_user.is_commercial:
             return contract.commercial_contact_id == self.current_user.id
-        
+
         if self.current_user.is_support:
             # Support peut voir les contrats avec des evenements assignes
-            return any(event.support_contact_id == self.current_user.id 
-                      for event in contract.events)
-        
+            return any(event.support_contact_id == self.current_user.id
+                       for event in contract.events)
+
         return False
