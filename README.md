@@ -212,3 +212,39 @@ Les modèles incluent des propriétés calculées utiles :
 ## Base de données
 
 Le fichier `epic_events.db` est créé automatiquement au premier lancement dans le répertoire racine du projet.
+
+
+
+
+# 1. Initialiser la base avec des données d'exemple
+python epicevents.py init
+
+# 2. Se connecter en tant qu'admin
+python epicevents.py login --email admin@epicevents.com
+# Mot de passe: Admin123!
+
+# 3. Vérifier le statut
+python epicevents.py status
+
+# 4. Tester les commandes clients
+python epicevents.py client list
+
+# 5. Tester les commandes contrats
+python epicevents.py contract list
+python epicevents.py contract unsigned
+python epicevents.py contract unpaid
+python epicevents.py contract view 1
+
+# 6. Se connecter en tant que commercial
+python epicevents.py logout
+python epicevents.py login --email marie.martin@epicevents.com
+# Mot de passe: Commercial123!
+
+# 7. Voir ses propres clients et contrats
+python epicevents.py client list --mine
+python epicevents.py contract mine
+
+# 8. Se connecter en tant que support
+python epicevents.py logout
+python epicevents.py login --email sophie.bernard@epicevents.com
+# Mot de passe: Support123!

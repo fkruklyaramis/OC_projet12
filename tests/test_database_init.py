@@ -12,7 +12,6 @@ def test_database_initialization():
 
     result = init_database()
     assert result is True
-
     assert os.path.exists(db_file)
 
 
@@ -35,8 +34,8 @@ def test_table_structure():
     inspector = inspect(engine)
 
     user_columns = [col['name'] for col in inspector.get_columns('users')]
-    expected_user_cols = ['id', 'email', 'hashed_password', 'full_name',
-                          'department']
+    expected_user_cols = ['id', 'employee_number', 'email', 'hashed_password',
+                          'full_name', 'department']
     for col in expected_user_cols:
         assert col in user_columns, f"Colonne {col} manquante dans table users"
 
@@ -45,3 +44,19 @@ def test_table_structure():
                             'commercial_contact_id']
     for col in expected_client_cols:
         assert col in client_columns, f"Colonne {col} manquante dans table clients"
+
+
+def test_user_constraints():
+    """Tester les contraintes sur la table users"""
+    init_database()
+
+    inspector = inspect(engine)
+    indexes = inspector.get_indexes('users')
+
+    # Vérifier que les index existent
+    indexed_columns = []
+    for index in indexes:
+        indexed_columns.extend(index['column_names'])
+
+    assert 'employee_number' in indexed_columns
+    assert 'email' in indexed_columns
