@@ -3,6 +3,7 @@ from src.database.init_db import init_database
 from src.views.auth_view import AuthView
 from src.views.client_view import ClientView
 from src.views.contract_view import ContractView
+from src.views.event_view import EventView
 
 
 @click.group()
@@ -123,6 +124,57 @@ def search_contracts():
     """Rechercher des contrats"""
     contract_view = ContractView()
     contract_view.search_contracts_command()
+
+
+# === COMMANDES EVENEMENTS ===
+@cli.group()
+def event():
+    """Gestion des événements"""
+    pass
+
+
+@event.command('list')
+def list_events():
+    """Lister tous les événements"""
+    event_view = EventView()
+    event_view.list_all_events_command()
+
+
+@event.command('mine')
+def my_events():
+    """Lister mes événements (support/commercial)"""
+    event_view = EventView()
+    event_view.list_my_events_command()
+
+
+@event.command('upcoming')
+@click.option('--days', default=30, help='Nombre de jours à venir (défaut: 30)')
+def upcoming_events(days):
+    """Lister les événements à venir"""
+    event_view = EventView()
+    event_view.list_upcoming_events_command(days)
+
+
+@event.command('unassigned')
+def unassigned_events():
+    """Lister les événements sans support assigné"""
+    event_view = EventView()
+    event_view.list_unassigned_events_command()
+
+
+@event.command('view')
+@click.argument('event_id', type=int)
+def view_event(event_id):
+    """Voir les détails d'un événement"""
+    event_view = EventView()
+    event_view.view_event_command(event_id)
+
+
+@event.command('search')
+def search_events():
+    """Rechercher des événements"""
+    event_view = EventView()
+    event_view.search_events_command()
 
 
 if __name__ == '__main__':

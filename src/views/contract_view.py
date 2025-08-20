@@ -27,7 +27,7 @@ class ContractView(BaseView):
             self.db.close()
 
     def list_all_contracts_command(self):
-        """Lister tous les contrats"""
+        """Lister tous les contrats (gestion seulement)"""
         try:
             current_user = self.auth_service.require_authentication()
             self.contract_controller.set_current_user(current_user)
@@ -73,14 +73,20 @@ class ContractView(BaseView):
             self.display_error(f"Erreur: {e}")
 
     def list_unsigned_contracts_command(self):
-        """Lister les contrats non signes"""
+        """Lister les contrats non signes selon les permissions"""
         try:
             current_user = self.auth_service.require_authentication()
             self.contract_controller.set_current_user(current_user)
 
             contracts = self.contract_controller.get_unsigned_contracts()
             
-            self.display_info("=== CONTRATS NON SIGNES ===")
+            role_info = ""
+            if current_user.is_commercial:
+                role_info = " (MES CONTRATS)"
+            elif current_user.is_support:
+                role_info = " (CONTRATS AVEC MES EVENEMENTS)"
+            
+            self.display_info(f"=== CONTRATS NON SIGNES{role_info} ===")
             
             if not contracts:
                 self.display_info("Aucun contrat non signe trouve")
@@ -94,14 +100,20 @@ class ContractView(BaseView):
             self.display_error(f"Erreur: {e}")
 
     def list_unpaid_contracts_command(self):
-        """Lister les contrats avec des montants dus"""
+        """Lister les contrats avec des montants dus selon les permissions"""
         try:
             current_user = self.auth_service.require_authentication()
             self.contract_controller.set_current_user(current_user)
 
             contracts = self.contract_controller.get_unpaid_contracts()
             
-            self.display_info("=== CONTRATS AVEC MONTANTS DUS ===")
+            role_info = ""
+            if current_user.is_commercial:
+                role_info = " (MES CONTRATS)"
+            elif current_user.is_support:
+                role_info = " (CONTRATS AVEC MES EVENEMENTS)"
+            
+            self.display_info(f"=== CONTRATS AVEC MONTANTS DUS{role_info} ===")
             
             if not contracts:
                 self.display_info("Aucun contrat avec montant du trouve")
@@ -122,7 +134,7 @@ class ContractView(BaseView):
 
             contract = self.contract_controller.get_contract_by_id(contract_id)
             if not contract:
-                self.display_error("Contrat non trouve")
+                self.display_error("Contrat non trouve ou acces refuse")
                 return
 
             self._display_contract_details(contract)
@@ -133,12 +145,18 @@ class ContractView(BaseView):
             self.display_error(f"Erreur: {e}")
 
     def search_contracts_command(self):
-        """Rechercher des contrats"""
+        """Rechercher des contrats selon les permissions"""
         try:
             current_user = self.auth_service.require_authentication()
             self.contract_controller.set_current_user(current_user)
 
-            self.display_info("=== RECHERCHE DE CONTRATS ===")
+            role_info = ""
+            if current_user.is_commercial:
+                role_info = " (DANS MES CONTRATS)"
+            elif current_user.is_support:
+                role_info = " (DANS MES EVENEMENTS)"
+
+            self.display_info(f"=== RECHERCHE DE CONTRATS{role_info} ===")
             
             criteria = {}
             

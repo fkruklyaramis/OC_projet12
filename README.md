@@ -248,3 +248,24 @@ python epicevents.py contract mine
 python epicevents.py logout
 python epicevents.py login --email sophie.bernard@epicevents.com
 # Mot de passe: Support123!
+
+# Lister tous les événements (gestion seulement)
+python epicevents.py event list
+
+# Lister mes événements (support = assignés, commercial = mes contrats)
+python epicevents.py event mine
+
+# Événements à venir dans les 30 prochains jours
+python epicevents.py event upcoming
+
+# Événements à venir dans les 7 prochains jours
+python epicevents.py event upcoming --days 7
+
+# Événements sans support assigné
+python epicevents.py event unassigned
+
+# Voir les détails d'un événement
+python epicevents.py event view 1
+
+# Rechercher des événements
+python epicevents.py event search

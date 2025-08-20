@@ -19,6 +19,10 @@ class ContractController(BaseController):
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
         
+        # Seule la gestion peut voir TOUS les contrats
+        if not self.current_user.is_gestion:
+            raise AuthorizationError("Seule la gestion peut consulter tous les contrats")
+        
         return self.db.query(Contract).options(
             joinedload(Contract.client),
             joinedload(Contract.commercial_contact)
@@ -63,9 +67,13 @@ class ContractController(BaseController):
             joinedload(Contract.commercial_contact)
         ).filter(Contract.status == status)
         
-        # Filtre pour les commerciaux : seulement leurs contrats
+        # Filtre par role utilisateur
         if self.current_user.is_commercial:
             query = query.filter(Contract.commercial_contact_id == self.current_user.id)
+        elif self.current_user.is_support:
+            # Support peut voir les contrats avec des evenements assignes
+            from src.models.event import Event
+            query = query.join(Event).filter(Event.support_contact_id == self.current_user.id)
         
         return query.all()
 
@@ -83,8 +91,12 @@ class ContractController(BaseController):
             joinedload(Contract.commercial_contact)
         ).filter(Contract.amount_due > 0)
         
+        # Filtre par role utilisateur
         if self.current_user.is_commercial:
             query = query.filter(Contract.commercial_contact_id == self.current_user.id)
+        elif self.current_user.is_support:
+            from src.models.event import Event
+            query = query.join(Event).filter(Event.support_contact_id == self.current_user.id)
         
         return query.all()
 
@@ -114,9 +126,12 @@ class ContractController(BaseController):
         if 'status' in criteria and criteria['status']:
             query = query.filter(Contract.status == criteria['status'])
         
-        # Filtre pour les commerciaux
+        # Filtre par role utilisateur
         if self.current_user.is_commercial:
             query = query.filter(Contract.commercial_contact_id == self.current_user.id)
+        elif self.current_user.is_support:
+            from src.models.event import Event
+            query = query.join(Event).filter(Event.support_contact_id == self.current_user.id)
         
         return query.all()
 
