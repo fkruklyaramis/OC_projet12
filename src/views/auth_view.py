@@ -1,7 +1,9 @@
+
 from sqlalchemy.orm import sessionmaker
+from rich.panel import Panel
 from rich.table import Table
-from rich import box
 from rich.text import Text
+from rich import box
 from datetime import datetime, timezone
 from src.database.connection import engine
 from src.services.auth_service import AuthenticationService
@@ -22,15 +24,40 @@ class AuthView(BaseView):
         if hasattr(self, 'db'):
             self.db.close()
 
+    def _display_welcome_logo(self):
+        """Afficher le logo d'accueil Epic Events"""
+        title_text = Text()
+        title_text.append("Epic Events CRM", style="bold cyan")
+        title_text.append(" - Système de gestion des événements", style="white")
+
+        logo = """
+    ███████╗██████╗ ██╗ ██████╗    ███████╗██╗   ██╗███████╗███╗   ██╗████████╗███████╗
+    ██╔════╝██╔══██╗██║██╔════╝    ██╔════╝██║   ██║██╔════╝████╗  ██║╚══██╔══╝██╔════╝
+    █████╗  ██████╔╝██║██║         █████╗  ██║   ██║█████╗  ██╔██╗ ██║   ██║   ███████╗
+    ██╔══╝  ██╔═══╝ ██║██║         ██╔══╝  ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║   ██║   ╚════██║
+    ███████╗██║     ██║╚██████╗    ███████╗ ╚████╔╝ ███████╗██║ ╚████║   ██║   ███████║
+    ╚══════╝╚═╝     ╚═╝ ╚═════╝    ╚══════╝  ╚═══╝  ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝
+        """
+
+        self.console.print(Panel(
+            logo,
+            title=title_text,
+            box=box.DOUBLE,
+            style="cyan"
+        ))
+
     def login_command(self, email: str = None):
         """Commande de connexion avec interface améliorée"""
         try:
             self.display_header("CONNEXION EPIC EVENTS CRM")
 
             if self.auth_service.is_authenticated():
+
                 current_user = self.auth_service.get_current_user()
                 if current_user:
-                    self.display_warning(f"Déjà connecté en tant que: {current_user.full_name}{current_user.email})")
+                    self.display_warning(f"Déjà connecté en tant que: "
+                                         f"{current_user.full_name} "
+                                         f"({current_user.email})")
 
                     if not self.confirm_action("Voulez-vous vous reconnecter?"):
                         return
@@ -47,6 +74,8 @@ class AuthView(BaseView):
                 user = self.auth_service.login(email, password)
 
             if user:
+                # Afficher le logo d'accueil
+                self._display_welcome_logo()
                 # Panneau de bienvenue stylé
                 welcome_content = f"""
 [bold green]Bienvenue {user.full_name} ![/bold green]
@@ -92,11 +121,9 @@ class AuthView(BaseView):
                         if remaining.total_seconds() > 0:
                             hours = int(remaining.total_seconds() // 3600)
                             minutes = int((remaining.total_seconds() % 3600) // 60)
-                            table.add_row("Token expire dans",
-                                          f"{hours}h {minutes}m")
+                            table.add_row("Token expire dans", f"{hours}h {minutes}m")
                         else:
-                            table.add_row("Token",
-                                          "[bold red]EXPIRÉ[/bold red]")
+                            table.add_row("Token", "[bold red]EXPIRÉ[/bold red]")
 
                     self.console.print(table)
                 else:
@@ -109,8 +136,7 @@ class AuthView(BaseView):
 [yellow]Utilisez la commande suivante pour vous connecter:[/yellow]
 [cyan]python epicevents.py login[/cyan]
                 """
-                self.display_panel(disconnected_content, "STATUT",
-                                   style="red", border_style="red")
+                self.display_panel(disconnected_content, "STATUT", style="red", border_style="red")
 
         except Exception as e:
             self.display_error(f"Erreur: {e}")
@@ -135,8 +161,7 @@ class AuthView(BaseView):
 
 À bientôt [cyan]{current_user.full_name}[/cyan] !
                 """
-                self.display_panel(logout_content, "AU REVOIR",
-                                   style="yellow", border_style="yellow")
+                self.display_panel(logout_content, "AU REVOIR", style="yellow", border_style="yellow")
             else:
                 self.display_error("Erreur lors de la déconnexion")
 

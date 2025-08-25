@@ -1,12 +1,11 @@
 import rich_click as click
 from rich.console import Console
-from rich.panel import Panel
-from rich import box
 from src.database.init_db import init_database
 from src.views.auth_view import AuthView
 from src.views.client_view import ClientView
 from src.views.contract_view import ContractView
 from src.views.event_view import EventView
+from src.views.user_view import UserView
 
 # Configuration Rich-Click
 click.rich_click.USE_RICH_MARKUP = True
@@ -23,27 +22,15 @@ console = Console()
 
 @click.group()
 def cli():
-    """
-    [bold cyan]Epic Events CRM[/bold cyan] - Système de gestion des événements
+    """Epic Events CRM - Système de gestion des événements
 
     Application de gestion de la relation client pour Epic Events.
     Gérez vos clients, contrats et événements en toute simplicité.
     """
-    # Afficher le logo au démarrage
-    logo = """
-[bold cyan]
-    ███████╗██████╗ ██╗ ██████╗    ███████╗██╗   ██╗███████╗███╗   ██╗████████╗███████╗
-    ██╔════╝██╔══██╗██║██╔════╝    ██╔════╝██║   ██║██╔════╝████╗  ██║╚══██╔══╝██╔════╝
-    █████╗  ██████╔╝██║██║         █████╗  ██║   ██║█████╗  ██╔██╗ ██║   ██║   ███████╗
-    ██╔══╝  ██╔═══╝ ██║██║         ██╔══╝  ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║   ██║   ╚════██║
-    ███████╗██║     ██║╚██████╗    ███████╗ ╚████╔╝ ███████╗██║ ╚████║   ██║   ███████║
-    ╚══════╝╚═╝     ╚═╝ ╚═════╝    ╚══════╝  ╚═══╝  ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝
-[/bold cyan]
-    """
-    console.print(Panel(logo, box=box.DOUBLE, style="cyan"))
+    pass
 
 
-# Commandes d'authentification
+# === COMMANDES D'AUTHENTIFICATION ===
 @cli.command()
 @click.option('--email', help='Adresse email de connexion')
 def login(email):
@@ -73,7 +60,7 @@ def whoami():
     auth_view.whoami_command()
 
 
-# Commande d'initialisation
+# === COMMANDE D'INITIALISATION ===
 @cli.command()
 def init():
     """Initialiser la base de données avec des données d'exemple"""
@@ -83,6 +70,8 @@ def init():
         success = init_database()
 
     if success:
+        from rich.panel import Panel
+        from rich import box
         success_content = """
 [bold green]Base de données initialisée avec succès ![/bold green]
 
@@ -94,12 +83,67 @@ def init():
 [cyan]Commande de connexion:[/cyan]
 [dim]python epicevents.py login --email admin@epicevents.com[/dim]
         """
-        console.print(Panel(success_content, title="INITIALISATION RÉUSSIE", style="green", box=box.ROUNDED))
+        console.print(Panel(success_content, title="INITIALISATION RÉUSSIE",
+                            style="green", box=box.ROUNDED))
     else:
         console.print("[bold red]Erreur lors de l'initialisation de la base de données[/bold red]")
 
 
-# Groupe clients
+# === GROUPE UTILISATEURS ===
+@cli.group()
+def user():
+    """Gestion des collaborateurs (gestion uniquement)"""
+    pass
+
+
+@user.command('list')
+@click.option('--department', type=click.Choice(['commercial', 'support', 'gestion']),
+              help='Filtrer par département')
+def list_users(department):
+    """Lister les utilisateurs"""
+    user_view = UserView()
+    user_view.list_users_command(department)
+
+
+@user.command('create')
+def create_user():
+    """Créer un nouveau collaborateur"""
+    user_view = UserView()
+    user_view.create_user_command()
+
+
+@user.command('update')
+@click.argument('user_id', type=int)
+def update_user(user_id):
+    """Modifier un collaborateur"""
+    user_view = UserView()
+    user_view.update_user_command(user_id)
+
+
+@user.command('delete')
+@click.argument('user_id', type=int)
+def delete_user(user_id):
+    """Supprimer un collaborateur"""
+    user_view = UserView()
+    user_view.delete_user_command(user_id)
+
+
+@user.command('password')
+@click.argument('user_id', type=int, required=False)
+def change_password(user_id):
+    """Changer le mot de passe (son propre mot de passe ou celui d'un autre si gestion)"""
+    user_view = UserView()
+    user_view.change_password_command(user_id)
+
+
+@user.command('search')
+def search_users():
+    """Rechercher des collaborateurs"""
+    user_view = UserView()
+    user_view.search_users_command()
+
+
+# === GROUPE CLIENTS ===
 @cli.group()
 def client():
     """Gestion des clients et prospects"""
@@ -114,6 +158,39 @@ def list_clients(mine):
     client_view.list_clients_command(my_clients=mine)
 
 
+@client.command('create')
+@click.option('--commercial-id', type=int, help='ID du commercial responsable')
+def create_client(commercial_id):
+    """Créer un nouveau client"""
+    client_view = ClientView()
+    client_view.create_client_command(commercial_id)
+
+
+@client.command('update')
+@click.argument('client_id', type=int)
+def update_client(client_id):
+    """Modifier un client"""
+    client_view = ClientView()
+    client_view.update_client_command(client_id)
+
+
+@client.command('delete')
+@click.argument('client_id', type=int)
+def delete_client(client_id):
+    """Supprimer un client"""
+    client_view = ClientView()
+    client_view.delete_client_command(client_id)
+
+
+@client.command('assign')
+@click.argument('client_id', type=int)
+@click.argument('commercial_id', type=int)
+def assign_client(client_id, commercial_id):
+    """Assigner un client à un commercial (gestion uniquement)"""
+    client_view = ClientView()
+    client_view.assign_client_command(client_id, commercial_id)
+
+
 @client.command('search')
 def search_clients():
     """Rechercher des clients par critères"""
@@ -121,7 +198,7 @@ def search_clients():
     client_view.search_clients_command()
 
 
-# Groupe contrats
+# === GROUPE CONTRATS ===
 @cli.group()
 def contract():
     """Gestion des contrats et devis"""
@@ -140,6 +217,30 @@ def my_contracts():
     """Lister mes contrats (commerciaux)"""
     contract_view = ContractView()
     contract_view.list_my_contracts_command()
+
+
+@contract.command('create')
+@click.argument('client_id', type=int)
+def create_contract(client_id):
+    """Créer un nouveau contrat pour un client"""
+    contract_view = ContractView()
+    contract_view.create_contract_command(client_id)
+
+
+@contract.command('update')
+@click.argument('contract_id', type=int)
+def update_contract(contract_id):
+    """Modifier un contrat"""
+    contract_view = ContractView()
+    contract_view.update_contract_command(contract_id)
+
+
+@contract.command('sign')
+@click.argument('contract_id', type=int)
+def sign_contract(contract_id):
+    """Signer un contrat"""
+    contract_view = ContractView()
+    contract_view.sign_contract_command(contract_id)
 
 
 @contract.command('unsigned')
@@ -171,7 +272,7 @@ def search_contracts():
     contract_view.search_contracts_command()
 
 
-# Groupe événements
+# === GROUPE EVENEMENTS ===
 @cli.group()
 def event():
     """Gestion des événements et manifestations"""
@@ -190,6 +291,31 @@ def my_events():
     """Lister mes événements (support/commercial)"""
     event_view = EventView()
     event_view.list_my_events_command()
+
+
+@event.command('create')
+@click.argument('contract_id', type=int)
+def create_event(contract_id):
+    """Créer un nouvel événement pour un contrat signé"""
+    event_view = EventView()
+    event_view.create_event_command(contract_id)
+
+
+@event.command('update')
+@click.argument('event_id', type=int)
+def update_event(event_id):
+    """Modifier un événement"""
+    event_view = EventView()
+    event_view.update_event_command(event_id)
+
+
+@event.command('assign')
+@click.argument('event_id', type=int)
+@click.argument('support_id', type=int)
+def assign_event(event_id, support_id):
+    """Assigner un support à un événement (gestion uniquement)"""
+    event_view = EventView()
+    event_view.assign_support_command(event_id, support_id)
 
 
 @event.command('upcoming')

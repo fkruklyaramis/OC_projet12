@@ -269,3 +269,61 @@ python epicevents.py event view 1
 
 # Rechercher des événements
 python epicevents.py event search
+
+# Lister les utilisateurs
+python epicevents.py user list
+python epicevents.py user list --department commercial
+
+# Créer un utilisateur
+python epicevents.py user create
+
+# Modifier un utilisateur
+python epicevents.py user update 1
+
+# Supprimer un utilisateur
+python epicevents.py user delete 1
+
+# Changer un mot de passe
+python epicevents.py user password  # Son propre mot de passe
+python epicevents.py user password 1  # Mot de passe d'un autre (gestion)
+
+# Rechercher des utilisateurs
+python epicevents.py user search
+
+# Créer un client
+python epicevents.py client create
+python epicevents.py client create --commercial-id 2
+
+# Modifier un client
+python epicevents.py client update 1
+
+# Supprimer un client (gestion uniquement)
+python epicevents.py client delete 1
+
+# Assigner un client (gestion uniquement)
+python epicevents.py client assign 1 2
+# Créer un contrat
+python epicevents.py contract create 1  # Pour le client ID 1
+
+# Modifier un contrat
+python epicevents.py contract update 1
+
+# Signer un contrat
+python epicevents.py contract sign 1
+
+# Créer un événement
+python epicevents.py event create 1  # Pour le contrat ID 1
+
+# Modifier un événement
+python epicevents.py event update 1
+
+# Assigner un support (gestion uniquement)
+python epicevents.py event assign 1 3  # Événement 1 au support ID 3
+
+/*
+python epicevents.py user create
+ajouter validation des email 
+
+erreur ✗ Erreur: UserController.create_user() missing 4 required positional arguments: 'email', 'password', 'full_name', and 
+'department'
+*/
