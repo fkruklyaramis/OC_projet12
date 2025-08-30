@@ -1,12 +1,9 @@
 
-from sqlalchemy.orm import sessionmaker
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from rich import box
 from datetime import datetime, timezone
-from src.database.connection import engine
-from src.services.auth_service import AuthenticationService
 from src.utils.auth_utils import AuthenticationError
 from .base_view import BaseView
 
@@ -16,13 +13,7 @@ class AuthView(BaseView):
 
     def __init__(self):
         super().__init__()
-        SessionLocal = sessionmaker(bind=engine)
-        self.db = SessionLocal()
-        self.auth_service = AuthenticationService(self.db)
-
-    def __del__(self):
-        if hasattr(self, 'db'):
-            self.db.close()
+        # AuthView utilise directement le service d'auth de BaseView
 
     def _display_welcome_logo(self):
         """Afficher le logo d'accueil Epic Events"""

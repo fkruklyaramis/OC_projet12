@@ -1,11 +1,9 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
-from datetime import datetime
 from src.models.contract import Contract, ContractStatus
 from src.models.client import Client
-from src.models.user import User
-from src.utils.auth_utils import AuthorizationError, PermissionChecker
-from src.utils.validators import DataValidator, ValidationError
+from src.utils.auth_utils import AuthorizationError
+from src.utils.validators import ValidationError
 from .base_controller import BaseController
 
 
@@ -14,144 +12,111 @@ class ContractController(BaseController):
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
-        self.permission_checker = PermissionChecker()
-        self.validator = DataValidator()
 
-    def create_contract(self, client_id: int, total_amount: float, amount_due: float = None) -> Contract:
-        """Creer un nouveau contrat"""
-        if not self.permission_checker.has_permission(self.current_user, 'create_contract'):
-            raise AuthorizationError("Permission requise pour créer des contrats")
+    def create_contract(self, client_id: int, total_amount: float,
+                        amount_due: float = None) -> Contract:
+        """Créer un nouveau contrat avec validation"""
+        self.require_create_access('contract')
 
+        # Validation des montants
         try:
-            # Validation des données
-            validated_total_amount = self.validator.validate_amount(total_amount, "Montant total")
+            validated_total_amount = self.validator.validate_amount(
+                total_amount, "Montant total"
+            )
 
             if amount_due is not None:
-                validated_amount_due = self.validator.validate_amount(amount_due, "Montant dû")
-                if validated_amount_due > validated_total_amount:
-                    raise ValidationError("Le montant dû ne peut pas être supérieur au montant total")
+                validated_amount_due = self.validator.validate_amount(
+                    amount_due, "Montant dû"
+                )
             else:
                 validated_amount_due = validated_total_amount
 
-            # Vérifier que le client existe
-            client = self.db.query(Client).filter(Client.id == client_id).first()
-            if not client:
-                raise ValidationError("Client non trouvé")
+            # Le montant dû ne peut pas être supérieur au montant total
+            if validated_amount_due > validated_total_amount:
+                raise ValidationError("Le montant dû ne peut pas être supérieur au montant total")
+        except ValidationError as e:
+            raise ValidationError(f"Validation des montants: {e}")
 
-            # Seul le commercial du client ou la gestion peut créer des contrats
-            if (self.current_user.is_commercial and
-               client.commercial_contact_id != self.current_user.id and not self.current_user.is_gestion):
-                raise AuthorizationError("Vous ne pouvez créer des contrats que pour vos clients")
+        # Vérifier que le client existe
+        client = self.db.query(Client).filter(Client.id == client_id).first()
+        if not client:
+            raise ValidationError("Client non trouvé")
 
-            # Créer le contrat
+        try:
             contract = Contract(
                 client_id=client_id,
-                commercial_contact_id=client.commercial_contact_id,
                 total_amount=validated_total_amount,
                 amount_due=validated_amount_due,
-                status=ContractStatus.DRAFT
+                status=ContractStatus.DRAFT,
+                commercial_contact_id=client.commercial_contact_id
             )
 
             self.db.add(contract)
-            self.db.commit()
+            self.safe_commit()
             self.db.refresh(contract)
             return contract
 
-        except (ValidationError, ValueError) as e:
-            self.db.rollback()
-            raise ValidationError(str(e))
         except Exception as e:
             self.db.rollback()
-            raise Exception(f"Erreur lors de la création du contrat: {e}")
+            raise Exception(f"Erreur lors de la création: {e}")
 
-    def update_contract(self, contract_id: int, **kwargs) -> Contract:
-        """Modifier un contrat"""
-        if not self.permission_checker.has_permission(self.current_user, 'update_contract'):
-            if not (self.current_user.is_commercial and
-                    self.permission_checker.has_permission(self.current_user, 'update_own_contract')):
-                raise AuthorizationError("Permission requise pour modifier les contrats")
-
+    def update_contract(self, contract_id: int, **update_data) -> Contract:
+        """Mettre à jour un contrat avec validation"""
         contract = self.get_contract_by_id(contract_id)
         if not contract:
-            raise ValueError("Contrat non trouvé")
+            raise ValidationError("Contrat non trouvé")
 
-        if not self._can_access_contract(contract):
-            raise AuthorizationError("Accès refusé à ce contrat")
+        self.require_write_access('contract', contract)
 
         try:
-            # Validation et mise à jour des champs
-            if 'total_amount' in kwargs:
-                validated_amount = self.validator.validate_amount(
-                    kwargs['total_amount'], "Montant total"
+            validated_data = {}
+
+            # Validation des montants
+            if 'total_amount' in update_data:
+                validated_data['total_amount'] = self.validator.validate_amount(
+                    update_data['total_amount'], "Montant total"
                 )
-                # Vérifier que le nouveau montant total >= montant dû
-                if validated_amount < contract.amount_due:
-                    raise ValidationError(
-                        "Le montant total ne peut pas être inférieur au montant dû"
-                    )
-                contract.total_amount = validated_amount
 
-            if 'amount_due' in kwargs:
-                validated_due = self.validator.validate_amount(
-                    kwargs['amount_due'], "Montant dû"
+            if 'amount_due' in update_data:
+                validated_data['amount_due'] = self.validator.validate_amount(
+                    update_data['amount_due'], "Montant dû"
                 )
-                # Vérifier que montant dû <= montant total
-                total_amount = kwargs.get('total_amount', contract.total_amount)
-                if validated_due > total_amount:
-                    raise ValidationError(
-                        "Le montant dû ne peut pas être supérieur au montant total"
+
+            # Vérifier que le montant dû n'est pas supérieur au total
+            total = validated_data.get('total_amount', contract.total_amount)
+            due = validated_data.get('amount_due', contract.amount_due)
+
+            if due > total:
+                raise ValidationError("Le montant dû ne peut pas être supérieur au montant total")
+
+            # Validation du statut
+            if 'status' in update_data:
+                if isinstance(update_data['status'], str):
+                    validated_data['status'] = self.validator.validate_contract_status(
+                        update_data['status']
                     )
-                contract.amount_due = validated_due
+                else:
+                    validated_data['status'] = update_data['status']
 
-            if 'status' in kwargs:
-                validated_status = self.validator.validate_contract_status(kwargs['status'])
-                contract.status = validated_status
+            # Appliquer les mises à jour
+            forbidden_fields = ['id', 'client_id', 'commercial_contact_id',
+                                'created_at', 'updated_at']
+            self.apply_validated_updates(contract, validated_data, forbidden_fields)
 
-            if 'signed' in kwargs:
-                signed = kwargs['signed']
-                if not isinstance(signed, bool):
-                    raise ValidationError("Le statut de signature doit être un booléen")
-
-                if signed and not contract.signed:
-                    # Contrat signé : mettre à jour la date et le statut
-                    contract.signed = True
-                    contract.signed_at = datetime.now()
-                    contract.status = ContractStatus.SIGNED
-                elif not signed and contract.signed:
-                    # Contrat non signé : remettre en brouillon
-                    contract.signed = False
-                    contract.signed_at = None
-                    contract.status = ContractStatus.DRAFT
-
-            # Seule la gestion peut changer l'assignation commercial
-            if 'commercial_contact_id' in kwargs:
-                if not self.current_user.is_gestion:
-                    raise AuthorizationError(
-                        "Seule la gestion peut changer l'assignation commerciale"
-                    )
-
-                commercial_id = kwargs['commercial_contact_id']
-                commercial = self.db.query(User).filter(User.id == commercial_id).first()
-                if not commercial or not commercial.is_commercial:
-                    raise ValidationError("Le contact commercial spécifié n'existe pas")
-
-                contract.commercial_contact_id = commercial_id
-
-            self.db.commit()
+            self.safe_commit()
             self.db.refresh(contract)
             return contract
 
-        except (ValidationError, ValueError) as e:
+        except ValidationError:
             self.db.rollback()
-            raise ValidationError(str(e))
+            raise
         except Exception as e:
             self.db.rollback()
-            raise Exception(f"Erreur lors de la modification du contrat: {e}")
+            raise Exception(f"Erreur lors de la mise à jour: {e}")
 
     def get_all_contracts(self) -> List[Contract]:
         """Recuperer tous les contrats avec verification des permissions"""
-        if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
-            raise AuthorizationError("Permission requise pour consulter les contrats")
+        self.require_read_access('contract')
 
         # Seule la gestion peut voir TOUS les contrats
         if not self.current_user.is_gestion:
@@ -164,14 +129,18 @@ class ContractController(BaseController):
 
     def get_contract_by_id(self, contract_id: int) -> Optional[Contract]:
         """Recuperer un contrat par son ID avec verification d'acces"""
-        if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
-            raise AuthorizationError("Permission requise pour consulter les contrats")
+        self.require_read_access('contract')
 
         contract = self.db.query(Contract).options(
             joinedload(Contract.client),
             joinedload(Contract.commercial_contact),
             joinedload(Contract.events)
         ).filter(Contract.id == contract_id).first()
+
+        if contract and not self._can_access_contract(contract):
+            raise AuthorizationError("Accès refusé à ce contrat")
+
+        return contract
 
         if contract and not self._can_access_contract(contract):
             raise AuthorizationError("Accès refusé à ce contrat")

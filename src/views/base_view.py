@@ -6,6 +6,9 @@ from rich.text import Text
 from rich.prompt import Prompt, Confirm
 from rich import box
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from sqlalchemy.orm import sessionmaker
+from src.database.connection import engine
+from src.services.auth_service import AuthenticationService
 
 
 class BaseView:
@@ -13,6 +16,23 @@ class BaseView:
 
     def __init__(self):
         self.console = Console()
+        # Initialisation commune de la base de données
+        SessionLocal = sessionmaker(bind=engine)
+        self.db = SessionLocal()
+        self.auth_service = AuthenticationService(self.db)
+
+    def __del__(self):
+        """Fermer la connexion à la base de données"""
+        if hasattr(self, 'db'):
+            self.db.close()
+
+    def setup_controller(self, controller_class):
+        """Configurer un contrôleur avec l'utilisateur actuel"""
+        controller = controller_class(self.db)
+        current_user = self.auth_service.get_current_user()
+        if current_user:
+            controller.set_current_user(current_user)
+        return controller
 
     def display_success(self, message: str):
         """Afficher un message de succès"""
@@ -98,3 +118,41 @@ class BaseView:
     def display_separator(self):
         """Afficher un séparateur"""
         self.console.rule(style="dim white")
+
+    def prompt_user(self, prompt_text: str, required: bool = False,
+                    password: bool = False) -> str:
+        """Demander une saisie à l'utilisateur"""
+        while True:
+            if password:
+                value = Prompt.ask(f"[bold cyan]{prompt_text}[/bold cyan]",
+                                   password=True)
+            else:
+                value = Prompt.ask(f"[bold cyan]{prompt_text}[/bold cyan]")
+
+            if required and not value.strip():
+                self.display_error("Cette information est obligatoire")
+                continue
+
+            return value if value else ""
+
+    def display_success_box(self, title: str, content: str):
+        """Afficher une boîte de succès"""
+        panel = Panel(
+            content,
+            title=f"[bold green]{title}[/bold green]",
+            style="green",
+            border_style="green",
+            box=box.ROUNDED
+        )
+        self.console.print(panel)
+
+    def display_info_box(self, title: str, content: str):
+        """Afficher une boîte d'information"""
+        panel = Panel(
+            content,
+            title=f"[bold blue]{title}[/bold blue]",
+            style="blue",
+            border_style="blue",
+            box=box.ROUNDED
+        )
+        self.console.print(panel)

@@ -1,61 +1,92 @@
-from typing import List
-from sqlalchemy.orm import sessionmaker
-from src.database.connection import engine
+from typing import Optional
 from src.controllers.client_controller import ClientController
-from src.services.auth_service import AuthenticationService
 from src.models.client import Client
+from src.models.user import User, Department
 from src.utils.auth_utils import AuthenticationError, AuthorizationError
+from src.utils.validators import ValidationError
 from .base_view import BaseView
 
 
 class ClientView(BaseView):
-    """Vue pour la gestion des clients - Pattern MVC"""
+    """Vue pour la gestion des clients avec interface Rich"""
 
     def __init__(self):
         super().__init__()
-        SessionLocal = sessionmaker(bind=engine)
-        self.db = SessionLocal()
-        self.client_controller = ClientController(self.db)
-        self.auth_service = AuthenticationService(self.db)
+        self.client_controller = self.setup_controller(ClientController)
 
-        current_user = self.auth_service.get_current_user()
-        if current_user:
-            self.client_controller.set_current_user(current_user)
-
-    def __del__(self):
-        if hasattr(self, 'db'):
-            self.db.close()
-
-    def create_client_command(self):
-        """Creer un nouveau client"""
+    def create_client_command(self, commercial_id: Optional[int] = None):
+        """Créer un nouveau client"""
         try:
             current_user = self.auth_service.require_authentication()
             self.client_controller.set_current_user(current_user)
 
-            self.display_info("=== CREATION D'UN NOUVEAU CLIENT ===")
+            self.display_header("CRÉATION D'UN NOUVEAU CLIENT")
 
-            full_name = self.get_user_input("Nom complet")
+            # Collecter les informations du client
+            full_name = self.get_user_input("Nom et prénom du client")
             email = self.get_user_input("Email")
-            phone = self.get_user_input("Telephone")
+            phone = self.get_user_input("Téléphone")
             company_name = self.get_user_input("Nom de l'entreprise")
 
-            client = self.client_controller.create_client(
-                full_name=full_name,
-                email=email,
-                phone=phone,
-                company_name=company_name
-            )
-
-            if client:
-                self.display_success(f"Client cree avec succes! ID: {client.id}")
-                self._display_client_details(client)
+            # Déterminer le commercial responsable
+            if commercial_id:
+                # Vérifier que le commercial existe
+                commercial = self.db.query(User).filter(
+                    User.id == commercial_id,
+                    User.department == Department.COMMERCIAL
+                ).first()
+                if not commercial:
+                    self.display_error(f"Commercial avec l'ID {commercial_id} non trouvé")
+                    return
+                final_commercial_id = commercial_id
             else:
-                self.display_error("Echec de la creation du client")
+                if current_user.is_commercial:
+                    final_commercial_id = current_user.id
+                elif current_user.is_gestion:
+                    # Proposer une liste des commerciaux disponibles
+                    commercials = self.db.query(User).filter(
+                        User.department == Department.COMMERCIAL
+                    ).all()
 
+                    if not commercials:
+                        self.display_error("Aucun commercial disponible")
+                        return
+
+                    commercial_choices = {}
+                    for i, commercial in enumerate(commercials, 1):
+                        commercial_choices[str(i)] = f"{commercial.full_name} ({commercial.email})"
+
+                    choice = self.get_user_choice(commercial_choices, "Choisissez le commercial responsable")
+                    final_commercial_id = commercials[int(choice) - 1].id
+                else:
+                    self.display_error("Vous devez spécifier un commercial responsable")
+                    return
+
+            with self.console.status("[bold green]Création du client en cours..."):
+                new_client = self.client_controller.create_client(
+                    full_name=full_name,
+                    email=email,
+                    phone=phone,
+                    company_name=company_name,
+                    commercial_contact_id=final_commercial_id
+                )
+
+            success_content = f"""
+[bold green]Client créé avec succès ![/bold green]
+
+[cyan]ID:[/cyan] {new_client.id}
+[cyan]Nom:[/cyan] {new_client.full_name}
+[cyan]Email:[/cyan] {new_client.email}
+[cyan]Téléphone:[/cyan] {new_client.phone}
+[cyan]Entreprise:[/cyan] {new_client.company_name}
+[cyan]Commercial:[/cyan] {new_client.commercial_contact.full_name}
+            """
+            self.display_panel(success_content, "CLIENT CRÉÉ", style="green")
+
+        except ValidationError as e:
+            self.display_error(f"Validation échouée: {e}")
         except (AuthenticationError, AuthorizationError) as e:
             self.display_error(f"Erreur d'autorisation: {e}")
-        except ValueError as e:
-            self.display_error(f"Erreur de validation: {e}")
         except Exception as e:
             self.display_error(f"Erreur: {e}")
 
@@ -65,17 +96,15 @@ class ClientView(BaseView):
             current_user = self.auth_service.require_authentication()
             self.client_controller.set_current_user(current_user)
 
-            if my_clients and current_user.is_commercial:
+            if my_clients:
                 clients = self.client_controller.get_my_clients()
-                title = "=== MES CLIENTS ==="
+                self.display_header("MES CLIENTS")
             else:
                 clients = self.client_controller.get_all_clients()
-                title = "=== TOUS LES CLIENTS ==="
-
-            self.display_info(title)
+                self.display_header("TOUS LES CLIENTS")
 
             if not clients:
-                self.display_info("Aucun client trouve")
+                self.display_info("Aucun client trouvé")
                 return
 
             self._display_clients_table(clients)
@@ -93,40 +122,140 @@ class ClientView(BaseView):
 
             client = self.client_controller.get_client_by_id(client_id)
             if not client:
-                self.display_error("Client non trouve")
+                self.display_error("Client non trouvé")
                 return
 
-            self.display_info("=== MODIFICATION DU CLIENT ===")
+            self.display_header(f"MODIFICATION DE {client.full_name}")
+
+            # Afficher les informations actuelles
             self._display_client_details(client)
 
-            updates = {}
+            self.console.print("\n[yellow]Laissez vide pour conserver la valeur actuelle[/yellow]")
 
-            new_name = self.get_user_input(f"Nom complet [{client.full_name}]")
-            if new_name:
-                updates['full_name'] = new_name
+            # Collecter les modifications
+            update_data = {}
 
-            new_email = self.get_user_input(f"Email [{client.email}]")
+            new_full_name = self.get_user_input(f"Nom complet ({client.full_name})")
+            if new_full_name:
+                update_data['full_name'] = new_full_name
+
+            new_email = self.get_user_input(f"Email ({client.email})")
             if new_email:
-                updates['email'] = new_email
+                update_data['email'] = new_email
 
-            new_phone = self.get_user_input(f"Telephone [{client.phone}]")
+            new_phone = self.get_user_input(f"Téléphone ({client.phone})")
             if new_phone:
-                updates['phone'] = new_phone
+                update_data['phone'] = new_phone
 
-            new_company = self.get_user_input(f"Entreprise [{client.company_name}]")
+            new_company = self.get_user_input(f"Entreprise ({client.company_name})")
             if new_company:
-                updates['company_name'] = new_company
+                update_data['company_name'] = new_company
 
-            if not updates:
-                self.display_info("Aucune modification apportee")
+            # Changement de commercial (gestion uniquement)
+            if current_user.is_gestion and self.confirm_action("Changer le commercial responsable ?"):
+                commercials = self.db.query(User).filter(
+                    User.department == Department.COMMERCIAL
+                ).all()
+
+                if commercials:
+                    commercial_choices = {}
+                    for i, commercial in enumerate(commercials, 1):
+                        commercial_choices[str(i)] = f"{commercial.full_name} ({commercial.email})"
+
+                    choice = self.get_user_choice(commercial_choices, "Nouveau commercial")
+                    update_data['commercial_contact_id'] = commercials[int(choice) - 1].id
+
+            if not update_data:
+                self.display_info("Aucune modification apportée")
                 return
 
-            updated_client = self.client_controller.update_client(client_id, **updates)
-            if updated_client:
-                self.display_success("Client modifie avec succes!")
-                self._display_client_details(updated_client)
-            else:
-                self.display_error("Echec de la modification")
+            with self.console.status("[bold green]Mise à jour en cours..."):
+                updated_client = self.client_controller.update_client(client_id, **update_data)
+
+            self.display_success("Client mis à jour avec succès")
+            self._display_client_details(updated_client)
+
+        except ValidationError as e:
+            self.display_error(f"Validation échouée: {e}")
+        except (AuthenticationError, AuthorizationError) as e:
+            self.display_error(f"Erreur d'autorisation: {e}")
+        except Exception as e:
+            self.display_error(f"Erreur: {e}")
+
+    def delete_client_command(self, client_id: int):
+        """Supprimer un client (gestion uniquement)"""
+        try:
+            current_user = self.auth_service.require_authentication()
+            self.client_controller.set_current_user(current_user)
+
+            if not current_user.is_gestion:
+                self.display_error("Seule la gestion peut supprimer des clients")
+                return
+
+            client = self.client_controller.get_client_by_id(client_id)
+            if not client:
+                self.display_error("Client non trouvé")
+                return
+
+            self.display_header("SUPPRESSION D'UN CLIENT")
+            self._display_client_details(client)
+
+            if not self.confirm_action(f"Êtes-vous sûr de vouloir supprimer {client.full_name} ?"):
+                self.display_info("Suppression annulée")
+                return
+
+            # Vérifier les dépendances
+            if hasattr(client, 'contracts') and client.contracts:
+                self.display_error("Impossible de supprimer: ce client a des contrats actifs")
+                return
+
+            with self.console.status("[bold red]Suppression en cours..."):
+                self.db.delete(client)
+                self.db.commit()
+
+            self.display_success("Client supprimé avec succès")
+
+        except (AuthenticationError, AuthorizationError) as e:
+            self.display_error(f"Erreur d'autorisation: {e}")
+        except Exception as e:
+            self.db.rollback()
+            self.display_error(f"Erreur: {e}")
+
+    def assign_client_command(self, client_id: int, commercial_id: int):
+        """Assigner un client à un commercial (gestion uniquement)"""
+        try:
+            current_user = self.auth_service.require_authentication()
+            self.client_controller.set_current_user(current_user)
+
+            if not current_user.is_gestion:
+                self.display_error("Seule la gestion peut réassigner des clients")
+                return
+
+            client = self.client_controller.get_client_by_id(client_id)
+            if not client:
+                self.display_error("Client non trouvé")
+                return
+
+            commercial = self.db.query(User).filter(
+                User.id == commercial_id,
+                User.department == Department.COMMERCIAL
+            ).first()
+            if not commercial:
+                self.display_error("Commercial non trouvé")
+                return
+
+            with self.console.status("[bold green]Assignation en cours..."):
+                updated_client = self.client_controller.update_client(
+                    client_id, commercial_contact_id=commercial_id
+                )
+
+            success_content = f"""
+[bold green]Client réassigné avec succès ![/bold green]
+
+[cyan]Client:[/cyan] {updated_client.full_name}
+[cyan]Nouveau commercial:[/cyan] {commercial.full_name} ({commercial.email})
+            """
+            self.display_panel(success_content, "RÉASSIGNATION RÉUSSIE", style="green")
 
         except (AuthenticationError, AuthorizationError) as e:
             self.display_error(f"Erreur d'autorisation: {e}")
@@ -134,65 +263,75 @@ class ClientView(BaseView):
             self.display_error(f"Erreur: {e}")
 
     def search_clients_command(self):
-        """Rechercher des clients"""
+        """Rechercher des clients par critères"""
         try:
             current_user = self.auth_service.require_authentication()
             self.client_controller.set_current_user(current_user)
 
-            self.display_info("=== RECHERCHE DE CLIENTS ===")
+            self.display_header("RECHERCHE DE CLIENTS")
 
             criteria = {}
 
-            company_search = self.get_user_input("Nom d'entreprise (optionnel)")
-            if company_search:
-                criteria['company_name'] = company_search
+            full_name = self.get_user_input("Nom (optionnel)")
+            if full_name:
+                criteria['full_name'] = full_name
 
-            name_search = self.get_user_input("Nom de personne (optionnel)")
-            if name_search:
-                criteria['full_name'] = name_search
+            email = self.get_user_input("Email (optionnel)")
+            if email:
+                criteria['email'] = email
 
-            email_search = self.get_user_input("Email (optionnel)")
-            if email_search:
-                criteria['email'] = email_search
+            company_name = self.get_user_input("Entreprise (optionnel)")
+            if company_name:
+                criteria['company_name'] = company_name
 
             if not criteria:
-                self.display_info("Aucun critere de recherche fourni")
+                self.display_info("Aucun critère de recherche fourni")
                 return
 
             clients = self.client_controller.search_clients(**criteria)
 
             if clients:
-                self.display_success(f"{len(clients)} client(s) trouve(s)")
+                self.display_success(f"{len(clients)} client(s) trouvé(s)")
                 self._display_clients_table(clients)
             else:
-                self.display_info("Aucun client correspondant trouve")
+                self.display_info("Aucun client correspondant trouvé")
 
         except (AuthenticationError, AuthorizationError) as e:
             self.display_error(f"Erreur d'autorisation: {e}")
         except Exception as e:
             self.display_error(f"Erreur: {e}")
 
-    def _display_client_details(self, client: Client):
-        """Afficher les details d'un client"""
-        print(f"\nID: {client.id}")
-        print(f"Nom: {client.full_name}")
-        print(f"Email: {client.email}")
-        print(f"Telephone: {client.phone}")
-        print(f"Entreprise: {client.company_name}")
-        print(f"Commercial: {client.commercial_contact.full_name}")
-        print(f"Cree le: {client.created_at.strftime('%Y-%m-%d %H:%M')}")
-        if client.updated_at:
-            print(f"Modifie le: {client.updated_at.strftime('%Y-%m-%d %H:%M')}")
-
-    def _display_clients_table(self, clients: List[Client]):
+    def _display_clients_table(self, clients):
         """Afficher les clients sous forme de tableau"""
-        header = f"{'ID':<5} {'Nom':<20} {'Entreprise':<20} {'Email':<30} {'Commercial':<20}"
-        print(header)
-        print("-" * len(header))
+        columns = [
+            {'name': 'ID', 'style': 'cyan', 'justify': 'right'},
+            {'name': 'Nom', 'style': 'white'},
+            {'name': 'Email', 'style': 'blue'},
+            {'name': 'Entreprise', 'style': 'green'},
+            {'name': 'Commercial', 'style': 'yellow'}
+        ]
 
+        data = []
         for client in clients:
-            commercial_name = (client.commercial_contact.full_name
-                               if client.commercial_contact else "N/A")
-            print(f"{client.id:<5} {client.full_name[:19]:<20} "
-                  f"{client.company_name[:19]:<20} {client.email[:29]:<30} "
-                  f"{commercial_name[:19]:<20}")
+            data.append([
+                str(client.id),
+                client.full_name,
+                client.email,
+                client.company_name,
+                client.commercial_contact.full_name if client.commercial_contact else "Non assigné"
+            ])
+
+        self.display_table("Clients", columns, data)
+
+    def _display_client_details(self, client: Client):
+        """Afficher les détails d'un client"""
+        client_content = f"""
+[cyan]ID:[/cyan] {client.id}
+[cyan]Nom:[/cyan] {client.full_name}
+[cyan]Email:[/cyan] {client.email}
+[cyan]Téléphone:[/cyan] {client.phone}
+[cyan]Entreprise:[/cyan] {client.company_name}
+[cyan]Commercial:[/cyan] {client.commercial_contact.full_name if client.commercial_contact else "Non assigné"}
+[cyan]Créé le:[/cyan] {client.created_at.strftime('%Y-%m-%d %H:%M')}
+        """
+        self.display_panel(client_content, "DÉTAILS DU CLIENT", style="blue")

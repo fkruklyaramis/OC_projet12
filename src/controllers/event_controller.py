@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session, joinedload
 from src.models.event import Event
 from src.models.contract import Contract, ContractStatus
 from src.models.client import Client
-from src.models.user import User
-from src.utils.auth_utils import AuthorizationError, PermissionChecker
-from src.utils.validators import DataValidator, ValidationError
+from src.models.user import User, Department
+from src.utils.auth_utils import AuthorizationError
+from src.utils.validators import ValidationError
 from .base_controller import BaseController
 
 
@@ -15,41 +15,36 @@ class EventController(BaseController):
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
-        self.permission_checker = PermissionChecker()
-        self.validator = DataValidator()
 
     def create_event(self, contract_id: int, name: str, start_date: datetime,
                      end_date: datetime, location: str, attendees: int,
-                     notes: str = None) -> Event:
-        """Creer un nouvel evenement"""
+                     notes: str = None, support_contact_id: int = None) -> Event:
+        """Créer un nouvel événement avec validation"""
         if not self.permission_checker.has_permission(self.current_user, 'create_event'):
-            raise AuthorizationError("Permission requise pour créer des événements")
+            raise AuthorizationError("Seule la gestion peut créer des événements")
 
+        # Validation des données
         try:
-            # Validation des données
             validated_name = self.validator.validate_event_name(name)
             validated_location = self.validator.validate_location(location)
             validated_attendees = self.validator.validate_attendees_count(attendees)
             self.validator.validate_date_range(start_date, end_date)
+        except ValidationError as e:
+            raise ValidationError(f"Validation des données: {e}")
 
-            # Vérifier que le contrat existe et est signé
-            contract = self.db.query(Contract).filter(Contract.id == contract_id).first()
-            if not contract:
-                raise ValidationError("Contrat non trouvé")
+        # Vérifier que le contrat existe et est signé
+        contract = self.db.query(Contract).filter(Contract.id == contract_id).first()
+        if not contract:
+            raise ValidationError("Contrat non trouvé")
 
-            if not contract.signed or contract.status != ContractStatus.SIGNED:
-                raise ValidationError(
-                    "Impossible de créer un événement pour un contrat non signé"
-                )
+        if contract.status != ContractStatus.SIGNED:
+            raise ValidationError("Seuls les contrats signés peuvent avoir des événements")
 
-            # Seul le commercial du contrat ou la gestion peut créer des événements
-            if (self.current_user.is_commercial and
-               contract.commercial_contact_id != self.current_user.id and not self.current_user.is_gestion):
-                raise AuthorizationError(
-                    "Vous ne pouvez créer des événements que pour vos contrats"
-                )
+        # Validation du support si fourni
+        if support_contact_id is not None:
+            self.get_user_by_id_and_department(support_contact_id, Department.SUPPORT)
 
-            # Créer l'événement
+        try:
             event = Event(
                 contract_id=contract_id,
                 name=validated_name,
@@ -57,99 +52,81 @@ class EventController(BaseController):
                 end_date=end_date,
                 location=validated_location,
                 attendees=validated_attendees,
-                notes=notes.strip() if notes else None
+                notes=notes.strip() if notes else None,
+                support_contact_id=support_contact_id
             )
 
             self.db.add(event)
-            self.db.commit()
+            self.safe_commit()
             self.db.refresh(event)
             return event
 
-        except (ValidationError, ValueError) as e:
-            self.db.rollback()
-            raise ValidationError(str(e))
         except Exception as e:
             self.db.rollback()
-            raise Exception(f"Erreur lors de la création de l'événement: {e}")
+            raise Exception(f"Erreur lors de la création: {e}")
 
-    def update_event(self, event_id: int, **kwargs) -> Event:
-        """Modifier un evenement"""
-        if not self.permission_checker.has_permission(self.current_user, 'update_event'):
-            if not (self.current_user.is_support and
-                    self.permission_checker.has_permission(self.current_user, 'update_assigned_event')):
-                raise AuthorizationError("Permission requise pour modifier les événements")
-
+    def update_event(self, event_id: int, **update_data) -> Event:
+        """Mettre à jour un événement avec validation"""
         event = self.get_event_by_id(event_id)
         if not event:
-            raise ValueError("Événement non trouvé")
+            raise ValidationError("Événement non trouvé")
 
-        if not self._can_access_event(event):
-            raise AuthorizationError("Accès refusé à cet événement")
+        self.require_write_access('event', event)
 
         try:
-            # Validation et mise à jour des champs
-            if 'name' in kwargs:
-                event.name = self.validator.validate_event_name(kwargs['name'])
+            # Validation des champs modifiés
+            if 'name' in update_data and update_data['name']:
+                update_data['name'] = self.validator.validate_event_name(update_data['name'])
 
-            if 'location' in kwargs:
-                event.location = self.validator.validate_location(kwargs['location'])
+            if 'location' in update_data and update_data['location']:
+                update_data['location'] = self.validator.validate_location(
+                    update_data['location']
+                )
 
-            if 'attendees' in kwargs:
-                event.attendees = self.validator.validate_attendees_count(kwargs['attendees'])
+            if 'attendees' in update_data:
+                update_data['attendees'] = self.validator.validate_attendees_count(
+                    update_data['attendees']
+                )
 
-            if 'start_date' in kwargs or 'end_date' in kwargs:
-                start_date = kwargs.get('start_date', event.start_date)
-                end_date = kwargs.get('end_date', event.end_date)
+            # Validation des dates
+            start_date = update_data.get('start_date', event.start_date)
+            end_date = update_data.get('end_date', event.end_date)
 
-                # Permettre la modification de dates passées pour les événements terminés
-                if start_date >= datetime.now():
-                    self.validator.validate_date_range(start_date, end_date)
-                elif end_date <= start_date:
-                    raise ValidationError(
-                        "La date de fin doit être postérieure à la date de début"
-                    )
+            if 'start_date' in update_data or 'end_date' in update_data:
+                self.validator.validate_date_range(start_date, end_date)
 
-                event.start_date = start_date
-                event.end_date = end_date
-
-            if 'notes' in kwargs:
-                notes = kwargs['notes']
-                event.notes = notes.strip() if notes else None
-
-            # Seule la gestion peut changer l'assignation support
-            if 'support_contact_id' in kwargs:
+            # Vérification de l'assignation de support (gestion uniquement)
+            if 'support_contact_id' in update_data:
                 if not self.current_user.is_gestion:
-                    raise AuthorizationError(
-                        "Seule la gestion peut changer l'assignation support"
-                    )
+                    raise AuthorizationError("Seule la gestion peut assigner le support")
 
-                support_id = kwargs['support_contact_id']
-                if support_id is not None:
-                    support = self.db.query(User).filter(User.id == support_id).first()
-                    if not support or not support.is_support:
-                        raise ValidationError("Le contact support spécifié n'existe pas")
+                if update_data['support_contact_id'] is not None:
+                    support = self.db.query(User).filter(
+                        User.id == update_data['support_contact_id'],
+                        User.department == Department.SUPPORT
+                    ).first()
+                    if not support:
+                        raise ValidationError("Le support spécifié n'existe pas")
 
-                event.support_contact_id = support_id
+            # Mettre à jour les champs
+            forbidden_fields = ['id', 'contract_id', 'created_at', 'updated_at']
 
-            # Support ne peut modifier que certains champs
-            if self.current_user.is_support and not self.current_user.is_gestion:
-                forbidden_fields = ['name', 'start_date', 'end_date', 'contract_id']
-                forbidden_updates = set(kwargs.keys()) & set(forbidden_fields)
-                if forbidden_updates:
-                    raise AuthorizationError(
-                        f"Support ne peut pas modifier: {', '.join(forbidden_updates)}"
-                    )
+            for key, value in update_data.items():
+                if key in forbidden_fields:
+                    continue
+                if hasattr(event, key):
+                    setattr(event, key, value)
 
-            self.db.commit()
+            self.safe_commit()
             self.db.refresh(event)
             return event
 
-        except (ValidationError, ValueError) as e:
+        except ValidationError:
             self.db.rollback()
-            raise ValidationError(str(e))
+            raise
         except Exception as e:
             self.db.rollback()
-            raise Exception(f"Erreur lors de la modification de l'événement: {e}")
+            raise Exception(f"Erreur lors de la mise à jour: {e}")
 
     def assign_support_to_event(self, event_id: int, support_user_id: int) -> Event:
         """Assigner un support a un evenement"""

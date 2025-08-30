@@ -1,8 +1,5 @@
 from typing import List
-from sqlalchemy.orm import sessionmaker
-from src.database.connection import engine
 from src.controllers.contract_controller import ContractController
-from src.services.auth_service import AuthenticationService
 from src.models.contract import Contract, ContractStatus
 from src.utils.auth_utils import AuthenticationError, AuthorizationError
 from .base_view import BaseView
@@ -13,18 +10,7 @@ class ContractView(BaseView):
 
     def __init__(self):
         super().__init__()
-        SessionLocal = sessionmaker(bind=engine)
-        self.db = SessionLocal()
-        self.contract_controller = ContractController(self.db)
-        self.auth_service = AuthenticationService(self.db)
-
-        current_user = self.auth_service.get_current_user()
-        if current_user:
-            self.contract_controller.set_current_user(current_user)
-
-    def __del__(self):
-        if hasattr(self, 'db'):
-            self.db.close()
+        self.contract_controller = self.setup_controller(ContractController)
 
     def list_all_contracts_command(self):
         """Lister tous les contrats (gestion seulement)"""
@@ -239,3 +225,227 @@ class ContractView(BaseView):
                   f"{contract.client.company_name[:19]:<20} "
                   f"{contract.total_amount:<12} {contract.amount_due:<12} "
                   f"{status_display:<10} {commercial_name:<20}")
+
+    def create_contract_command(self, client_id: int):
+        """Créer un nouveau contrat pour un client"""
+        from decimal import Decimal
+
+        try:
+            current_user = self.auth_service.require_authentication()
+            self.contract_controller.set_current_user(current_user)
+
+            # Vérifier que le client existe
+            from src.controllers.client_controller import ClientController
+            client_controller = ClientController(self.db)
+            client_controller.set_current_user(current_user)
+
+            client = client_controller.get_client_by_id(client_id)
+            if not client:
+                self.display_error(f"Client avec l'ID {client_id} introuvable")
+                return
+
+            self.display_info(f"\n────────────── CRÉATION D'UN CONTRAT POUR {client.full_name.upper()} ──────────────")
+
+            # Saisie des données du contrat
+            self.display_info(f"\nClient : {client.full_name}")
+            self.display_info(f"Entreprise : {client.company_name}")
+            self.display_info(f"Commercial : {client.commercial_contact.full_name}")
+
+            print()
+
+            # Montant total
+            while True:
+                try:
+                    total_amount_input = self.prompt_user("Montant total du contrat (EUR)", required=True)
+                    total_amount = Decimal(total_amount_input.replace(',', '.'))
+                    if total_amount <= 0:
+                        self.display_error("Le montant doit être positif")
+                        continue
+                    break
+                except (ValueError, TypeError):
+                    self.display_error("Montant invalide. Utilisez le format : 1000.50")
+
+            # Montant restant dû
+            while True:
+                try:
+                    amount_due_input = self.prompt_user("Montant restant dû (EUR)", required=True)
+                    amount_due = Decimal(amount_due_input.replace(',', '.'))
+                    if amount_due < 0:
+                        self.display_error("Le montant dû ne peut pas être négatif")
+                        continue
+                    if amount_due > total_amount:
+                        self.display_error("Le montant dû ne peut pas être supérieur au montant total")
+                        continue
+                    break
+                except (ValueError, TypeError):
+                    self.display_error("Montant invalide. Utilisez le format : 1000.50")
+
+            # Statut du contrat
+            print("\nChoisissez le statut du contrat :")
+            print("  1 - draft (brouillon)")
+            print("  2 - signed (signé)")
+            print("  3 - cancelled (annulé)")
+
+            while True:
+                choice = self.prompt_user("Votre choix [1/2/3]", required=True)
+                if choice == "1":
+                    status = ContractStatus.DRAFT
+                    break
+                elif choice == "2":
+                    status = ContractStatus.SIGNED
+                    break
+                elif choice == "3":
+                    status = ContractStatus.CANCELLED
+                    break
+                else:
+                    self.display_error("Choix invalide. Choisissez 1, 2 ou 3")
+
+            # Créer le contrat
+            contract = self.contract_controller.create_contract(
+                client_id=client_id,
+                total_amount=float(total_amount),
+                amount_due=float(amount_due)
+            )
+
+            # Mettre à jour le statut si ce n'est pas DRAFT
+            if status != ContractStatus.DRAFT:
+                contract = self.contract_controller.update_contract(
+                    contract_id=contract.id,
+                    status=status
+                )
+
+            self.display_success_box(
+                "CONTRAT CRÉÉ",
+                f"Contrat créé avec succès !\n\n"
+                f"ID: {contract.id}\n"
+                f"Client: {contract.client.full_name}\n"
+                f"Entreprise: {contract.client.company_name}\n"
+                f"Montant total: {contract.total_amount} EUR\n"
+                f"Montant dû: {contract.amount_due} EUR\n"
+                f"Statut: {contract.status.value.upper()}\n"
+                f"Commercial: {contract.commercial_contact.full_name}"
+            )
+
+        except (AuthenticationError, AuthorizationError) as e:
+            self.display_error(f"Erreur d'autorisation: {e}")
+        except Exception as e:
+            self.display_error(f"Erreur lors de la création du contrat: {e}")
+
+    def update_contract_command(self, contract_id: int):
+        """Mettre à jour un contrat existant"""
+        from decimal import Decimal
+
+        try:
+            current_user = self.auth_service.require_authentication()
+            self.contract_controller.set_current_user(current_user)
+
+            # Récupérer le contrat
+            contract = self.contract_controller.get_contract_by_id(contract_id)
+            if not contract:
+                self.display_error(f"Contrat avec l'ID {contract_id} introuvable")
+                return
+
+            self.display_info(f"\n──────────────── MODIFICATION DU CONTRAT {contract.id} ────────────────")
+
+            # Afficher les détails actuels
+            self.display_info_box(
+                "DÉTAILS DU CONTRAT",
+                f"ID: {contract.id}\n"
+                f"Client: {contract.client.full_name}\n"
+                f"Entreprise: {contract.client.company_name}\n"
+                f"Montant total: {contract.total_amount} EUR\n"
+                f"Montant dû: {contract.amount_due} EUR\n"
+                f"Statut: {contract.status.value.upper()}\n"
+                f"Commercial: {contract.commercial_contact.full_name}\n"
+                f"Créé le: {contract.created_at.strftime('%Y-%m-%d %H:%M')}"
+            )
+
+            print("\nLaissez vide pour conserver la valeur actuelle")
+
+            # Montant total
+            total_amount = None
+            total_input = self.prompt_user(f"Montant total ({contract.total_amount} EUR)")
+            if total_input.strip():
+                try:
+                    total_amount = float(Decimal(total_input.replace(',', '.')))
+                    if total_amount <= 0:
+                        self.display_error("Le montant doit être positif")
+                        return
+                except (ValueError, TypeError):
+                    self.display_error("Montant invalide")
+                    return
+
+            # Montant restant dû
+            amount_due = None
+            due_input = self.prompt_user(f"Montant restant dû ({contract.amount_due} EUR)")
+            if due_input.strip():
+                try:
+                    amount_due = float(Decimal(due_input.replace(',', '.')))
+                    if amount_due < 0:
+                        self.display_error("Le montant dû ne peut pas être négatif")
+                        return
+                    check_total = total_amount if total_amount is not None else contract.total_amount
+                    if amount_due > check_total:
+                        self.display_error("Le montant dû ne peut pas être supérieur au montant total")
+                        return
+                except (ValueError, TypeError):
+                    self.display_error("Montant invalide")
+                    return
+
+            # Statut du contrat
+            status = None
+            change_status = self.prompt_user("Changer le statut ? [y/n]")
+            if change_status.lower() in ['y', 'yes', 'o', 'oui']:
+                print(f"\nStatut actuel: {contract.status.value}")
+                print("\nNouveau statut :")
+                print("  1 - draft (brouillon)")
+                print("  2 - signed (signé)")
+                print("  3 - cancelled (annulé)")
+
+                while True:
+                    choice = self.prompt_user("Votre choix [1/2/3]", required=True)
+                    if choice == "1":
+                        status = ContractStatus.DRAFT
+                        break
+                    elif choice == "2":
+                        status = ContractStatus.SIGNED
+                        break
+                    elif choice == "3":
+                        status = ContractStatus.CANCELLED
+                        break
+                    else:
+                        self.display_error("Choix invalide. Choisissez 1, 2 ou 3")
+
+            # Mettre à jour le contrat
+            update_data = {}
+            if total_amount is not None:
+                update_data['total_amount'] = total_amount
+            if amount_due is not None:
+                update_data['amount_due'] = amount_due
+            if status is not None:
+                update_data['status'] = status
+
+            updated_contract = self.contract_controller.update_contract(
+                contract_id=contract_id,
+                **update_data
+            )
+
+            self.display_success("✓ Contrat mis à jour avec succès")
+
+            # Afficher les nouveaux détails
+            self.display_info_box(
+                "DÉTAILS DU CONTRAT",
+                f"ID: {updated_contract.id}\n"
+                f"Client: {updated_contract.client.full_name}\n"
+                f"Entreprise: {updated_contract.client.company_name}\n"
+                f"Montant total: {updated_contract.total_amount} EUR\n"
+                f"Montant dû: {updated_contract.amount_due} EUR\n"
+                f"Statut: {updated_contract.status.value.upper()}\n"
+                f"Commercial: {updated_contract.commercial_contact.full_name}\n"
+                f"Créé le: {updated_contract.created_at.strftime('%Y-%m-%d %H:%M')}"
+            )
+
+        except (AuthenticationError, AuthorizationError) as e:
+            self.display_error(f"Erreur d'autorisation: {e}")
+        except Exception as e:
+            self.display_error(f"Erreur lors de la mise à jour du contrat: {e}")
