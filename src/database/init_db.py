@@ -6,20 +6,21 @@ from src.models.client import Client
 from src.models.contract import Contract, ContractStatus
 from src.models.event import Event
 from src.utils.hash_utils import hash_password
+from src.config.messages import GENERAL_MESSAGES
 
 
 def drop_all_tables():
     """Supprimer toutes les tables existantes"""
-    print("Suppression des tables existantes...")
+    print(GENERAL_MESSAGES["db_dropping_tables"])
     Base.metadata.drop_all(bind=engine)
-    print("Tables supprimees.")
+    print(GENERAL_MESSAGES["db_tables_dropped"])
 
 
 def create_sample_data(session):
     """Creer des donnees d'exemple pour tester l'application"""
 
     # 1. Creer des utilisateurs
-    print("Creation des utilisateurs...")
+    print(GENERAL_MESSAGES["db_creating_users"])
 
     # Admin/Gestion
     admin = User(
@@ -72,10 +73,10 @@ def create_sample_data(session):
     session.add(support2)
 
     session.commit()
-    print("5 utilisateurs crees.")
+    print(GENERAL_MESSAGES["db_users_created"])
 
     # 2. Creer des clients
-    print("Creation des clients...")
+    print(GENERAL_MESSAGES["db_creating_clients"])
 
     client1 = Client(
         full_name="Alice Rousseau",
@@ -114,10 +115,10 @@ def create_sample_data(session):
     session.add(client4)
 
     session.commit()
-    print("4 clients crees.")
+    print(GENERAL_MESSAGES["db_clients_created"])
 
     # 3. Creer des contrats
-    print("Creation des contrats...")
+    print(GENERAL_MESSAGES["db_creating_contracts"])
 
     # Contrat signe avec evenement
     contract1 = Contract(
@@ -167,10 +168,10 @@ def create_sample_data(session):
     session.add(contract4)
 
     session.commit()
-    print("4 contrats crees.")
+    print(GENERAL_MESSAGES["db_contracts_created"])
 
     # 4. Creer des evenements
-    print("Creation des evenements...")
+    print(GENERAL_MESSAGES["db_creating_events"])
 
     # Evenement passe avec support assigne
     event1 = Event(
@@ -225,7 +226,7 @@ def create_sample_data(session):
     session.add(event4)
 
     session.commit()
-    print("4 evenements crees.")
+    print(GENERAL_MESSAGES["db_events_created"])
 
     print("\n=== DONNEES CREEES ===")
     print("Utilisateurs:")
@@ -244,7 +245,7 @@ def init_database():
     try:
         # Supprimer et recreer toutes les tables
         drop_all_tables()
-        print("Creation des tables...")
+        print(GENERAL_MESSAGES["db_creating_tables"])
         Base.metadata.create_all(bind=engine)
         print("Tables creees avec succes.")
 

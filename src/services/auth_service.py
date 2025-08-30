@@ -6,6 +6,7 @@ from src.utils.jwt_utils import JWTManager
 from src.utils.auth_utils import (
     AuthenticationError, AuthorizationError, PermissionChecker
 )
+from src.config.messages import AUTH_MESSAGES
 
 
 class AuthenticationService:
@@ -22,10 +23,10 @@ class AuthenticationService:
             # Authentifier l'utilisateur
             user = self.db.query(User).filter(User.email == email).first()
             if not user:
-                raise AuthenticationError("Utilisateur non trouvé")
+                raise AuthenticationError(AUTH_MESSAGES["user_not_found"])
 
             if not verify_password(user.hashed_password, password):
-                raise AuthenticationError("Mot de passe incorrect")
+                raise AuthenticationError(AUTH_MESSAGES["incorrect_password"])
 
             # Générer et sauvegarder le token JWT
             token = self.jwt_manager.generate_token(
@@ -38,12 +39,12 @@ class AuthenticationService:
             if self.jwt_manager.save_token(token):
                 return user
             else:
-                raise Exception("Erreur lors de la sauvegarde du token")
+                raise Exception(AUTH_MESSAGES["token_save_error"])
 
         except AuthenticationError:
             raise
         except Exception as e:
-            raise AuthenticationError(f"Erreur lors de la connexion: {e}")
+            raise AuthenticationError(AUTH_MESSAGES["login_error"].format(error=e))
 
     def logout(self) -> bool:
         """Déconnexion utilisateur - suppression du token"""
@@ -67,7 +68,7 @@ class AuthenticationService:
         """Exiger une authentification - lancer exception si non connecté"""
         current_user = self.get_current_user()
         if not current_user:
-            raise AuthenticationError("Vous devez être connecté pour effectuer cette action")
+            raise AuthenticationError(AUTH_MESSAGES["authentication_required"])
         return current_user
 
     def check_permission(self, permission: str) -> bool:
@@ -81,7 +82,7 @@ class AuthenticationService:
         """Exiger une permission - lancer exception si non autorisé"""
         current_user = self.require_authentication()
         if not self.permission_checker.has_permission(current_user, permission):
-            raise AuthorizationError(f"Permission requise: {permission}")
+            raise AuthorizationError(AUTH_MESSAGES["permission_required"].format(permission=permission))
         return current_user
 
     def can_access_resource(self, resource_type: str, resource_owner_id: int = None,

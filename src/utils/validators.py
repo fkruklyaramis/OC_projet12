@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 from src.models.user import Department
 from src.models.contract import ContractStatus
+from src.config.messages import VALIDATION_MESSAGES
 
 
 class ValidationError(Exception):
@@ -16,16 +17,16 @@ class DataValidator:
     def validate_email(email: str) -> str:
         """Valider un email"""
         if not email:
-            raise ValidationError("L'email est requis")
+            raise ValidationError(VALIDATION_MESSAGES["email_required"])
 
         email = email.strip().lower()
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
 
         if not re.match(email_pattern, email):
-            raise ValidationError("Format d'email invalide")
+            raise ValidationError(VALIDATION_MESSAGES["email_invalid_format"])
 
         if len(email) > 255:
-            raise ValidationError("L'email ne peut pas dépasser 255 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["email_too_long"])
 
         return email
 
@@ -33,14 +34,14 @@ class DataValidator:
     def validate_phone(phone: str) -> str:
         """Valider un numéro de téléphone"""
         if not phone:
-            raise ValidationError("Le numéro de téléphone est requis")
+            raise ValidationError(VALIDATION_MESSAGES["phone_required"])
 
         phone = phone.strip()
         # Format français : 01.23.45.67.89 ou 0123456789
         phone_pattern = r'^(0[1-9](\.[0-9]{2}){4}|0[1-9][0-9]{8})$'
 
         if not re.match(phone_pattern, phone):
-            raise ValidationError("Format de téléphone invalide (exemple: 01.23.45.67.89)")
+            raise ValidationError(VALIDATION_MESSAGES["phone_invalid_format"])
 
         return phone
 
@@ -48,14 +49,14 @@ class DataValidator:
     def validate_employee_number(employee_number: str) -> str:
         """Valider un numéro d'employé"""
         if not employee_number:
-            raise ValidationError("Le numéro d'employé est requis")
+            raise ValidationError(VALIDATION_MESSAGES["employee_number_required"])
 
         employee_number = employee_number.strip().upper()
         # Format : EE000001
         pattern = r'^EE[0-9]{6}$'
 
         if not re.match(pattern, employee_number):
-            raise ValidationError("Format de numéro d'employé invalide (exemple: EE000001)")
+            raise ValidationError(VALIDATION_MESSAGES["employee_number_invalid_format"])
 
         return employee_number
 
@@ -63,20 +64,20 @@ class DataValidator:
     def validate_full_name(full_name: str) -> str:
         """Valider un nom complet"""
         if not full_name:
-            raise ValidationError("Le nom complet est requis")
+            raise ValidationError(VALIDATION_MESSAGES["full_name_required"])
 
         full_name = full_name.strip()
 
         if len(full_name) < 2:
-            raise ValidationError("Le nom complet doit contenir au moins 2 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["full_name_too_short"])
 
         if len(full_name) > 255:
-            raise ValidationError("Le nom complet ne peut pas dépasser 255 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["full_name_too_long"])
 
         # Vérifier que le nom contient au moins un prénom et un nom
         parts = full_name.split()
         if len(parts) < 2:
-            raise ValidationError("Le nom complet doit contenir prénom et nom")
+            raise ValidationError(VALIDATION_MESSAGES["full_name_incomplete"])
 
         return full_name
 
@@ -84,15 +85,15 @@ class DataValidator:
     def validate_company_name(company_name: str) -> str:
         """Valider un nom d'entreprise"""
         if not company_name:
-            raise ValidationError("Le nom de l'entreprise est requis")
+            raise ValidationError(VALIDATION_MESSAGES["company_name_required"])
 
         company_name = company_name.strip()
 
         if len(company_name) < 2:
-            raise ValidationError("Le nom de l'entreprise doit contenir au moins 2 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["company_name_too_short"])
 
         if len(company_name) > 255:
-            raise ValidationError("Le nom de l'entreprise ne peut pas dépasser 255 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["company_name_too_long"])
 
         return company_name
 
@@ -100,7 +101,7 @@ class DataValidator:
     def validate_department(department: str) -> Department:
         """Valider un département"""
         if not department:
-            raise ValidationError("Le département est requis")
+            raise ValidationError(VALIDATION_MESSAGES["department_required"])
 
         department = department.strip().lower()
 
@@ -109,25 +110,27 @@ class DataValidator:
         except ValueError:
             valid_departments = [d.value for d in Department]
             raise ValidationError(
-                f"Département invalide. Valeurs autorisées: {', '.join(valid_departments)}"
+                VALIDATION_MESSAGES["department_invalid"].format(
+                    departments=', '.join(valid_departments)
+                )
             )
 
     @staticmethod
     def validate_amount(amount: float, field_name: str = "Montant") -> float:
         """Valider un montant"""
         if amount is None:
-            raise ValidationError(f"{field_name} est requis")
+            raise ValidationError(VALIDATION_MESSAGES["amount_required"].format(field=field_name))
 
         if not isinstance(amount, (int, float)):
-            raise ValidationError(f"{field_name} doit être un nombre")
+            raise ValidationError(VALIDATION_MESSAGES["amount_must_be_number"].format(field=field_name))
 
         amount = float(amount)
 
         if amount < 0:
-            raise ValidationError(f"{field_name} ne peut pas être négatif")
+            raise ValidationError(VALIDATION_MESSAGES["amount_negative"].format(field=field_name))
 
         if amount > 999999999.99:
-            raise ValidationError(f"{field_name} ne peut pas dépasser 999,999,999.99")
+            raise ValidationError(VALIDATION_MESSAGES["amount_too_large"].format(field=field_name))
 
         # Arrondir à 2 décimales
         return round(amount, 2)
@@ -136,7 +139,7 @@ class DataValidator:
     def validate_contract_status(status: str) -> ContractStatus:
         """Valider un statut de contrat"""
         if not status:
-            raise ValidationError("Le statut est requis")
+            raise ValidationError(VALIDATION_MESSAGES["status_required"])
 
         status = status.strip().lower()
 
@@ -145,39 +148,41 @@ class DataValidator:
         except ValueError:
             valid_statuses = [s.value for s in ContractStatus]
             raise ValidationError(
-                f"Statut invalide. Valeurs autorisées: {', '.join(valid_statuses)}"
+                VALIDATION_MESSAGES["status_invalid"].format(
+                    statuses=', '.join(valid_statuses)
+                )
             )
 
     @staticmethod
     def validate_date_range(start_date: datetime, end_date: datetime):
         """Valider une plage de dates"""
         if not start_date:
-            raise ValidationError("La date de début est requise")
+            raise ValidationError(VALIDATION_MESSAGES["start_date_required"])
 
         if not end_date:
-            raise ValidationError("La date de fin est requise")
+            raise ValidationError(VALIDATION_MESSAGES["end_date_required"])
 
         if start_date >= end_date:
-            raise ValidationError("La date de fin doit être postérieure à la date de début")
+            raise ValidationError(VALIDATION_MESSAGES["end_date_before_start"])
 
         # Vérifier que l'événement n'est pas dans le passé (sauf pour les tests)
         if start_date < datetime.now():
-            raise ValidationError("La date de début ne peut pas être dans le passé")
+            raise ValidationError(VALIDATION_MESSAGES["start_date_past"])
 
     @staticmethod
     def validate_attendees_count(attendees: int) -> int:
         """Valider le nombre de participants"""
         if attendees is None:
-            raise ValidationError("Le nombre de participants est requis")
+            raise ValidationError(VALIDATION_MESSAGES["attendees_required"])
 
         if not isinstance(attendees, int):
-            raise ValidationError("Le nombre de participants doit être un entier")
+            raise ValidationError(VALIDATION_MESSAGES["attendees_must_be_integer"])
 
         if attendees <= 0:
-            raise ValidationError("Le nombre de participants doit être supérieur à 0")
+            raise ValidationError(VALIDATION_MESSAGES["attendees_positive"])
 
         if attendees > 10000:
-            raise ValidationError("Le nombre de participants ne peut pas dépasser 10,000")
+            raise ValidationError(VALIDATION_MESSAGES["attendees_too_large"])
 
         return attendees
 
@@ -185,15 +190,15 @@ class DataValidator:
     def validate_event_name(name: str) -> str:
         """Valider un nom d'événement"""
         if not name:
-            raise ValidationError("Le nom de l'événement est requis")
+            raise ValidationError(VALIDATION_MESSAGES["event_name_required"])
 
         name = name.strip()
 
         if len(name) < 3:
-            raise ValidationError("Le nom de l'événement doit contenir au moins 3 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["event_name_too_short"])
 
         if len(name) > 255:
-            raise ValidationError("Le nom de l'événement ne peut pas dépasser 255 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["event_name_too_long"])
 
         return name
 
@@ -201,14 +206,14 @@ class DataValidator:
     def validate_location(location: str) -> str:
         """Valider un lieu"""
         if not location:
-            raise ValidationError("Le lieu est requis")
+            raise ValidationError(VALIDATION_MESSAGES["location_required"])
 
         location = location.strip()
 
         if len(location) < 3:
-            raise ValidationError("Le lieu doit contenir au moins 3 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["location_too_short"])
 
         if len(location) > 255:
-            raise ValidationError("Le lieu ne peut pas dépasser 255 caractères")
+            raise ValidationError(VALIDATION_MESSAGES["location_too_long"])
 
         return location

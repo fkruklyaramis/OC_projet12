@@ -9,6 +9,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from sqlalchemy.orm import sessionmaker
 from src.database.connection import engine
 from src.services.auth_service import AuthenticationService
+from src.config.messages import VALIDATION_MESSAGES, PROMPTS, GENERAL_MESSAGES
 
 
 class BaseView:
@@ -88,14 +89,16 @@ class BaseView:
         for key, value in choices.items():
             self.console.print(f"  [yellow]{key}[/yellow] - {value}")
 
-        return Prompt.ask("Votre choix", choices=list(choices.keys()))
+        return Prompt.ask(PROMPTS["user_choice"], choices=list(choices.keys()))
 
     def confirm_action(self, message: str) -> bool:
         """Demander confirmation avec style"""
         return Confirm.ask(f"[bold yellow]{message}[/bold yellow]")
 
-    def show_progress(self, tasks: list, description: str = "Traitement"):
+    def show_progress(self, tasks: list, description: str = None):
         """Afficher une barre de progression"""
+        if description is None:
+            description = GENERAL_MESSAGES["processing_default"]
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -130,7 +133,7 @@ class BaseView:
                 value = Prompt.ask(f"[bold cyan]{prompt_text}[/bold cyan]")
 
             if required and not value.strip():
-                self.display_error("Cette information est obligatoire")
+                self.display_error(VALIDATION_MESSAGES["information_required"])
                 continue
 
             return value if value else ""

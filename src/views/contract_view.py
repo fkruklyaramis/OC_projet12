@@ -2,7 +2,7 @@ from typing import List
 from src.controllers.contract_controller import ContractController
 from src.models.contract import Contract, ContractStatus
 from src.utils.auth_utils import AuthenticationError, AuthorizationError
-from src.config.messages import CONTRACT_MESSAGES
+from src.config.messages import CONTRACT_MESSAGES, VALIDATION_MESSAGES
 from .base_view import BaseView
 
 
@@ -30,9 +30,9 @@ class ContractView(BaseView):
             self._display_contracts_table(contracts)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def list_my_contracts_command(self):
         """Lister mes contrats (commerciaux seulement)"""
@@ -41,23 +41,23 @@ class ContractView(BaseView):
             self.contract_controller.set_current_user(current_user)
 
             if not current_user.is_commercial:
-                self.display_error("Cette commande est reservee aux commerciaux")
+                self.display_error(CONTRACT_MESSAGES["permission_commercial_only"])
                 return
 
             contracts = self.contract_controller.get_my_contracts()
 
-            self.display_info("=== MES CONTRATS ===")
+            self.display_info(CONTRACT_MESSAGES["my_contracts_header"])
 
             if not contracts:
-                self.display_info("Aucun contrat trouve")
+                self.display_info(CONTRACT_MESSAGES["no_my_contracts"])
                 return
 
             self._display_contracts_table(contracts)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def list_unsigned_contracts_command(self):
         """Lister les contrats non signes selon les permissions"""
@@ -76,15 +76,15 @@ class ContractView(BaseView):
             self.display_info(f"=== CONTRATS NON SIGNES{role_info} ===")
 
             if not contracts:
-                self.display_info("Aucun contrat non signe trouve")
+                self.display_info(CONTRACT_MESSAGES["no_unsigned_contracts"])
                 return
 
             self._display_contracts_table(contracts)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def list_unpaid_contracts_command(self):
         """Lister les contrats avec des montants dus selon les permissions"""
@@ -103,15 +103,15 @@ class ContractView(BaseView):
             self.display_info(f"=== CONTRATS AVEC MONTANTS DUS{role_info} ===")
 
             if not contracts:
-                self.display_info("Aucun contrat avec montant du trouve")
+                self.display_info(CONTRACT_MESSAGES["no_pending_contracts"])
                 return
 
             self._display_contracts_table(contracts)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def view_contract_command(self, contract_id: int):
         """Afficher les details d'un contrat"""
@@ -121,15 +121,15 @@ class ContractView(BaseView):
 
             contract = self.contract_controller.get_contract_by_id(contract_id)
             if not contract:
-                self.display_error("Contrat non trouve ou acces refuse")
+                self.display_error(CONTRACT_MESSAGES["not_found_or_access_denied"])
                 return
 
             self._display_contract_details(contract)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def search_contracts_command(self):
         """Rechercher des contrats selon les permissions"""
@@ -172,7 +172,7 @@ class ContractView(BaseView):
                 criteria['status'] = status_options[status_choice]
 
             if not criteria:
-                self.display_info("Aucun critere de recherche fourni")
+                self.display_info(CONTRACT_MESSAGES["no_search_criteria"])
                 return
 
             contracts = self.contract_controller.search_contracts(**criteria)
@@ -181,12 +181,12 @@ class ContractView(BaseView):
                 self.display_success(f"{len(contracts)} contrat(s) trouve(s)")
                 self._display_contracts_table(contracts)
             else:
-                self.display_info("Aucun contrat correspondant trouve")
+                self.display_info(CONTRACT_MESSAGES["no_search_results"])
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def _display_contract_details(self, contract: Contract):
         """Afficher les details d'un contrat"""
@@ -328,7 +328,7 @@ class ContractView(BaseView):
             )
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
             self.display_error(f"Erreur lors de la création du contrat: {e}")
 
@@ -447,6 +447,6 @@ class ContractView(BaseView):
             )
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
             self.display_error(f"Erreur lors de la mise à jour du contrat: {e}")

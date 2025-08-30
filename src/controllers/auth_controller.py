@@ -6,6 +6,7 @@ from src.utils.auth_utils import (
     generate_employee_number, validate_password_strength,
     AuthenticationError, AuthorizationError, PermissionChecker
 )
+from src.config.messages import AUTH_MESSAGES
 from .base_controller import BaseController
 
 
@@ -21,10 +22,10 @@ class AuthController(BaseController):
         try:
             user = self.db.query(User).filter(User.email == email).first()
             if not user:
-                raise AuthenticationError("Utilisateur non trouvé")
+                raise AuthenticationError(AUTH_MESSAGES["user_not_found"])
 
             if not verify_password(user.hashed_password, password):
-                raise AuthenticationError("Mot de passe incorrect")
+                raise AuthenticationError(AUTH_MESSAGES["incorrect_password"])
 
             return user
         except Exception as e:
@@ -99,7 +100,7 @@ class AuthController(BaseController):
         try:
             user = self.db.query(User).filter(User.id == user_id).first()
             if not user:
-                raise ValueError("Utilisateur non trouvé")
+                raise ValueError(AUTH_MESSAGES["user_not_found"])
 
             # Ne pas permettre la modification du mot de passe par cette méthode
             forbidden_fields = ['id', 'hashed_password', 'employee_number']
@@ -120,7 +121,7 @@ class AuthController(BaseController):
         """Changer le mot de passe d'un utilisateur"""
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise ValueError("Utilisateur non trouvé")
+            raise ValueError(AUTH_MESSAGES["user_not_found"])
 
         # Vérification: utilisateur ne peut changer que son propre mot de passe
         # ou admin peut changer tous les mots de passe
@@ -155,7 +156,7 @@ class AuthController(BaseController):
         try:
             user = self.db.query(User).filter(User.id == user_id).first()
             if not user:
-                raise ValueError("Utilisateur non trouvé")
+                raise ValueError(AUTH_MESSAGES["user_not_found"])
 
             self.db.delete(user)
             self.db.commit()

@@ -9,27 +9,77 @@ AUTH_MESSAGES = {
     'logout_header': "DÉCONNEXION",
     'status_header': "STATUT DE CONNEXION",
     'login_success': "Connexion réussie",
+    'login_success_title': "CONNEXION RÉUSSIE",
     'logout_success': "Déconnexion réussie",
+    'login_failed': "Échec de la connexion",
+    'logout_failed': "Erreur lors de la déconnexion",
     'auth_required': "Authentification requise",
+    'authentication_required': "Vous devez être connecté pour effectuer cette action",
     'user_not_found': "Utilisateur non trouvé",
     'incorrect_password': "Mot de passe incorrect",
     'not_connected': "Vous n'êtes pas connecté",
+    'already_connected': "Déjà connecté en tant que: {user_name} ({user_email})",
+    'app_title': "Epic Events CRM",
+    'app_subtitle': " - Système de gestion des événements",
+    'connecting_status': "[bold green]Connexion en cours...",
+    'logout_status': "[bold red]Déconnexion en cours...",
+    'connection_info_title': "Informations de connexion",
+    'status_title': "STATUT",
+    'goodbye_title': "AU REVOIR",
+    'invalid_token': "Token invalide ou expiré",
+    'authentication_error': "Erreur d'authentification: {error}",
+    'general_error': "Erreur: {error}",
+    'login_error': "Erreur lors de la connexion: {error}",
+    'token_save_error': "Erreur lors de la sauvegarde du token",
+    'permission_required': "Permission requise: {permission}",
 }
 
 # ===== MESSAGES UTILISATEURS =====
 USER_MESSAGES = {
     'create_header': "CRÉATION D'UN NOUVEAU COLLABORATEUR",
     'list_header': "TOUS LES COLLABORATEURS",
-    'update_header': "MODIFICATION D'UN COLLABORATEUR",
+    'list_header_department': "COLLABORATEURS - {department}",
+    'update_header': "MODIFICATION DE {name}",
     'delete_header': "SUPPRESSION D'UN COLLABORATEUR",
     'search_header': "RECHERCHE DE COLLABORATEURS",
-    'password_change_header': "CHANGEMENT DE MOT DE PASSE",
+    'change_my_password_header': "CHANGEMENT DE MON MOT DE PASSE",
+    'change_user_password_header': "CHANGEMENT DU MOT DE PASSE DE {name}",
+    'title_user_created': "UTILISATEUR CRÉÉ",
+    'title_user_details': "DÉTAILS DE L'UTILISATEUR",
+    'table_title': "Collaborateurs",
     'create_success': "Utilisateur créé avec succès",
     'update_success': "Utilisateur mis à jour avec succès",
     'delete_success': "Utilisateur supprimé avec succès",
     'password_change_success': "Mot de passe changé avec succès",
     'user_not_found': "Utilisateur non trouvé",
     'no_users_found': "Aucun collaborateur trouvé",
+    'no_search_results': "Aucun collaborateur correspondant trouvé",
+    'no_search_criteria': "Aucun critère de recherche fourni",
+    'no_modifications': "Aucune modification apportée",
+    'delete_cancelled': "Suppression annulée",
+    'password_mismatch': "Les mots de passe ne correspondent pas",
+    'permission_create_only': "Seule la gestion peut créer des utilisateurs",
+    'permission_list_only': "Seule la gestion peut lister les utilisateurs",
+    'permission_update_only': "Seule la gestion peut modifier des utilisateurs",
+    'permission_delete_only': "Seule la gestion peut supprimer des utilisateurs",
+    'permission_search_only': "Seule la gestion peut rechercher des utilisateurs",
+    'permission_change_password_only': "Seule la gestion peut changer le mot de passe d'autres utilisateurs",
+    'prompt_department': "Choisissez le département",
+    'prompt_new_department': "Nouveau département",
+    'prompt_email_current': "Email ({current})",
+    'prompt_full_name_current': "Nom complet ({current})",
+    'prompt_new_password': "Nouveau mot de passe",
+    'prompt_confirm_password': "Confirmer le mot de passe",
+    'prompt_search_name': "Nom (optionnel)",
+    'prompt_search_email': "Email (optionnel)",
+    'prompt_search_employee': "Numéro d'employé (optionnel)",
+    'prompt_search_department': "Département (optionnel)",
+    'confirm_change_department': "Changer le département ?",
+    'confirm_change_password': "Changer le mot de passe ?",
+    'confirm_delete': "Êtes-vous sûr de vouloir supprimer {name} ?",
+    'current_department': "Département actuel: {department}",
+    'update_instruction': "\n[yellow]Laissez vide pour conserver la valeur actuelle[/yellow]",
+    'prompt_password': "Mot de passe",
 }
 
 # ===== MESSAGES CLIENTS =====
@@ -43,10 +93,24 @@ CLIENT_MESSAGES = {
     'create_success': "Client créé avec succès",
     'update_success': "Client mis à jour avec succès",
     'delete_success': "Client supprimé avec succès",
+    'client_created_title': "CLIENT CRÉÉ",
+    'reassignment_success_title': "RÉASSIGNATION RÉUSSIE",
+    'update_form_header': "MODIFICATION DE {client_name}",
     'client_not_found': "Client non trouvé",
     'no_clients_found': "Aucun client trouvé",
     'no_commercials_available': "Aucun commercial disponible",
     'commercial_required': "Vous devez spécifier un commercial responsable",
+    'commercial_not_found': "Commercial avec l'ID {commercial_id} non trouvé",
+    'permission_delete_only': "Seule la gestion peut supprimer des clients",
+    'permission_reassign_only': "Seule la gestion peut réassigner des clients",
+    'delete_with_contracts': "Impossible de supprimer: ce client a des contrats actifs",
+    'commercial_not_found_simple': "Commercial non trouvé",
+    'search_results': "{count} client(s) trouvé(s)",
+    'no_search_results': "Aucun client correspondant trouvé",
+    'create_success_content': "[bold green]Client créé avec succès ![/bold green]",
+    'reassignment_success_content': "[bold green]Client réassigné avec succès ![/bold green]",
+    'client_details_title': "DÉTAILS DU CLIENT",
+    'no_commercial_assigned': "Non assigné",
 }
 
 # ===== MESSAGES CONTRATS =====
@@ -61,6 +125,8 @@ CONTRACT_MESSAGES = {
     'sign_success': "Contrat signé avec succès",
     'contract_not_found': "Contrat non trouvé",
     'no_contracts_found': "Aucun contrat trouvé",
+    'permission_commercial_only': "Cette commande est réservée aux commerciaux",
+    'no_my_contracts': "Aucun contrat trouvé",
 }
 
 # ===== MESSAGES ÉVÉNEMENTS =====
@@ -78,6 +144,24 @@ EVENT_MESSAGES = {
     'no_support_available': "Aucun utilisateur support disponible",
 }
 
+# ===== MESSAGES DE STATUS/ACTIONS =====
+STATUS_MESSAGES = {
+    'creating_client': "[bold green]Création du client en cours...",
+    'updating_client': "[bold green]Mise à jour en cours...",
+    'deleting_client': "[bold red]Suppression en cours...",
+    'assigning_client': "[bold green]Assignation en cours...",
+    'creating_user': "[bold green]Création de l'utilisateur en cours...",
+    'updating_user': "[bold green]Mise à jour en cours...",
+    'deleting_user': "[bold red]Suppression en cours...",
+    'creating_contract': "[bold green]Création du contrat en cours...",
+    'updating_contract': "[bold green]Mise à jour en cours...",
+    'signing_contract': "[bold green]Signature en cours...",
+    'creating_event': "[bold green]Création de l'événement en cours...",
+    'updating_event': "[bold green]Mise à jour en cours...",
+    'connecting': "[bold green]Connexion en cours...",
+    'searching': "[bold blue]Recherche en cours...",
+}
+
 # ===== MESSAGES DE VALIDATION =====
 VALIDATION_MESSAGES = {
     'email_invalid': "Format d'email invalide",
@@ -88,17 +172,24 @@ VALIDATION_MESSAGES = {
     'amount_invalid': "Montant invalide",
     'date_invalid': "Format de date invalide",
     'field_required': "Ce champ est obligatoire",
+    'information_required': "Cette information est obligatoire",
+    'validation_failed': "Validation échouée: {error}",
+    'authorization_error': "Erreur d'autorisation: {error}",
+    'general_error': "Erreur: {error}",
 }
 
 # ===== MESSAGES GÉNÉRAUX =====
 GENERAL_MESSAGES = {
     'operation_cancelled': "Opération annulée",
+    'deletion_cancelled': "Suppression annulée",
     'no_changes_made': "Aucune modification apportée",
     'no_search_criteria': "Aucun critère de recherche fourni",
     'access_denied': "Accès refusé",
     'unauthorized': "Action non autorisée",
     'loading': "Chargement...",
     'processing': "Traitement en cours...",
+    'processing_default': "Traitement",
+    'update_instructions': "[yellow]Laissez vide pour conserver la valeur actuelle[/yellow]",
 }
 
 # ===== PROMPTS UTILISATEUR =====
@@ -115,16 +206,25 @@ PROMPTS = {
     'name_optional': "Nom (optionnel)",
     'email_optional': "Email (optionnel)",
     'company_optional': "Entreprise (optionnel)",
+    'choose_commercial': "Choisissez le commercial responsable",
+    'name_update': "Nom complet ({current_value})",
+    'email_update': "Email ({current_value})",
+    'phone_update': "Téléphone ({current_value})",
+    'company_update': "Entreprise ({current_value})",
+    'new_commercial': "Nouveau commercial",
+    'user_choice': "Votre choix",
 }
 
 # ===== CONFIRMATIONS =====
 CONFIRMATIONS = {
     'delete_user': "Êtes-vous sûr de vouloir supprimer cet utilisateur ?",
     'delete_client': "Êtes-vous sûr de vouloir supprimer ce client ?",
+    'delete_client_specific': "Êtes-vous sûr de vouloir supprimer {client_name} ?",
     'delete_contract': "Êtes-vous sûr de vouloir supprimer ce contrat ?",
     'delete_event': "Êtes-vous sûr de vouloir supprimer cet événement ?",
     'sign_contract': "Êtes-vous sûr de vouloir signer ce contrat ?",
     'change_password': "Changer le mot de passe ?",
     'change_department': "Changer le département ?",
     'change_commercial': "Changer le commercial responsable ?",
+    'reconnect': "Voulez-vous vous reconnecter?",
 }

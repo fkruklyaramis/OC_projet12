@@ -2,7 +2,7 @@ from typing import List
 from src.controllers.event_controller import EventController
 from src.models.event import Event
 from src.utils.auth_utils import AuthenticationError, AuthorizationError
-from src.config.messages import EVENT_MESSAGES
+from src.config.messages import EVENT_MESSAGES, VALIDATION_MESSAGES
 from .base_view import BaseView
 
 
@@ -21,18 +21,18 @@ class EventView(BaseView):
 
             events = self.event_controller.get_all_events()
 
-            self.display_info("=== TOUS LES EVENEMENTS ===")
+            self.display_info(EVENT_MESSAGES["all_events_header"])
 
             if not events:
-                self.display_info("Aucun événement trouvé")
+                self.display_info(EVENT_MESSAGES["no_events_found"])
                 return
 
             self._display_events_table(events)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def list_my_events_command(self):
         """Lister mes événements selon le rôle"""
@@ -51,15 +51,15 @@ class EventView(BaseView):
             self.display_info(f"=== MES EVENEMENTS{role_info} ===")
 
             if not events:
-                self.display_info("Aucun événement trouvé")
+                self.display_info(EVENT_MESSAGES["no_events_found"])
                 return
 
             self._display_events_table(events)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def list_upcoming_events_command(self, days_ahead: int = 30):
         """Lister les événements à venir"""
@@ -84,9 +84,9 @@ class EventView(BaseView):
             self._display_events_table(events)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def list_unassigned_events_command(self):
         """Lister les événements sans support assigné"""
@@ -96,18 +96,18 @@ class EventView(BaseView):
 
             events = self.event_controller.get_events_without_support()
 
-            self.display_info("=== EVENEMENTS SANS SUPPORT ASSIGNE ===")
+            self.display_info(EVENT_MESSAGES["unassigned_header"])
 
             if not events:
-                self.display_info("Aucun événement sans support trouvé")
+                self.display_info(EVENT_MESSAGES["no_unassigned_events"])
                 return
 
             self._display_events_table(events)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def view_event_command(self, event_id: int):
         """Afficher les détails d'un événement"""
@@ -117,15 +117,15 @@ class EventView(BaseView):
 
             event = self.event_controller.get_event_by_id(event_id)
             if not event:
-                self.display_error("Événement non trouvé ou accès refusé")
+                self.display_error(EVENT_MESSAGES["not_found_or_access_denied"])
                 return
 
             self._display_event_details(event)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def search_events_command(self):
         """Rechercher des événements selon les permissions"""
@@ -166,7 +166,7 @@ class EventView(BaseView):
                     return
 
             if not criteria:
-                self.display_info("Aucun critère de recherche fourni")
+                self.display_info(EVENT_MESSAGES["no_search_criteria"])
                 return
 
             events = self.event_controller.search_events(**criteria)
@@ -175,12 +175,12 @@ class EventView(BaseView):
                 self.display_success(f"{len(events)} événement(s) trouvé(s)")
                 self._display_events_table(events)
             else:
-                self.display_info("Aucun événement correspondant trouvé")
+                self.display_info(EVENT_MESSAGES["no_search_results"])
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def _display_event_details(self, event: Event):
         """Afficher les détails d'un événement"""
@@ -373,7 +373,7 @@ class EventView(BaseView):
             )
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
             self.display_error(f"Erreur lors de la création de l'événement: {e}")
 
@@ -515,7 +515,7 @@ class EventView(BaseView):
             )
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
             self.display_error(f"Erreur lors de la mise à jour de l'événement: {e}")
 
@@ -536,6 +536,6 @@ class EventView(BaseView):
             )
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
             self.display_error(f"Erreur lors de l'assignation: {e}")

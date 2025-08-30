@@ -4,7 +4,10 @@ from src.models.client import Client
 from src.models.user import User, Department
 from src.utils.auth_utils import AuthenticationError, AuthorizationError
 from src.utils.validators import ValidationError
-from src.config.messages import CLIENT_MESSAGES, PROMPTS
+from src.config.messages import (
+    CLIENT_MESSAGES, PROMPTS, STATUS_MESSAGES,
+    VALIDATION_MESSAGES, CONFIRMATIONS, GENERAL_MESSAGES
+)
 from .base_view import BaseView
 
 
@@ -37,7 +40,7 @@ class ClientView(BaseView):
                     User.department == Department.COMMERCIAL
                 ).first()
                 if not commercial:
-                    self.display_error(f"Commercial avec l'ID {commercial_id} non trouvé")
+                    self.display_error(CLIENT_MESSAGES["commercial_not_found"].format(commercial_id=commercial_id))
                     return
                 final_commercial_id = commercial_id
             else:
@@ -57,13 +60,13 @@ class ClientView(BaseView):
                     for i, commercial in enumerate(commercials, 1):
                         commercial_choices[str(i)] = f"{commercial.full_name} ({commercial.email})"
 
-                    choice = self.get_user_choice(commercial_choices, "Choisissez le commercial responsable")
+                    choice = self.get_user_choice(commercial_choices, PROMPTS["choose_commercial"])
                     final_commercial_id = commercials[int(choice) - 1].id
                 else:
                     self.display_error(CLIENT_MESSAGES["commercial_required"])
                     return
 
-            with self.console.status("[bold green]Création du client en cours..."):
+            with self.console.status(STATUS_MESSAGES["creating_client"]):
                 new_client = self.client_controller.create_client(
                     full_name=full_name,
                     email=email,
@@ -73,7 +76,7 @@ class ClientView(BaseView):
                 )
 
             success_content = f"""
-[bold green]Client créé avec succès ![/bold green]
+{CLIENT_MESSAGES["create_success_content"]}
 
 [cyan]ID:[/cyan] {new_client.id}
 [cyan]Nom:[/cyan] {new_client.full_name}
@@ -82,14 +85,14 @@ class ClientView(BaseView):
 [cyan]Entreprise:[/cyan] {new_client.company_name}
 [cyan]Commercial:[/cyan] {new_client.commercial_contact.full_name}
             """
-            self.display_panel(success_content, "CLIENT CRÉÉ", style="green")
+            self.display_panel(success_content, CLIENT_MESSAGES["client_created_title"], style="green")
 
         except ValidationError as e:
-            self.display_error(f"Validation échouée: {e}")
+            self.display_error(VALIDATION_MESSAGES["validation_failed"].format(error=e))
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def list_clients_command(self, my_clients: bool = False):
         """Lister les clients"""
@@ -111,9 +114,9 @@ class ClientView(BaseView):
             self._display_clients_table(clients)
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def update_client_command(self, client_id: int):
         """Modifier un client"""
@@ -126,34 +129,34 @@ class ClientView(BaseView):
                 self.display_error(CLIENT_MESSAGES["client_not_found"])
                 return
 
-            self.display_header(f"MODIFICATION DE {client.full_name}")
+            self.display_header(CLIENT_MESSAGES["update_form_header"].format(client_name=client.full_name))
 
             # Afficher les informations actuelles
             self._display_client_details(client)
 
-            self.console.print("\n[yellow]Laissez vide pour conserver la valeur actuelle[/yellow]")
+            self.console.print(f"\n{GENERAL_MESSAGES['update_instructions']}")
 
             # Collecter les modifications
             update_data = {}
 
-            new_full_name = self.get_user_input(f"Nom complet ({client.full_name})")
+            new_full_name = self.get_user_input(PROMPTS["name_update"].format(current_value=client.full_name))
             if new_full_name:
                 update_data['full_name'] = new_full_name
 
-            new_email = self.get_user_input(f"Email ({client.email})")
+            new_email = self.get_user_input(PROMPTS["email_update"].format(current_value=client.email))
             if new_email:
                 update_data['email'] = new_email
 
-            new_phone = self.get_user_input(f"Téléphone ({client.phone})")
+            new_phone = self.get_user_input(PROMPTS["phone_update"].format(current_value=client.phone))
             if new_phone:
                 update_data['phone'] = new_phone
 
-            new_company = self.get_user_input(f"Entreprise ({client.company_name})")
+            new_company = self.get_user_input(PROMPTS["company_update"].format(current_value=client.company_name))
             if new_company:
                 update_data['company_name'] = new_company
 
             # Changement de commercial (gestion uniquement)
-            if current_user.is_gestion and self.confirm_action("Changer le commercial responsable ?"):
+            if current_user.is_gestion and self.confirm_action(CONFIRMATIONS["change_commercial"]):
                 commercials = self.db.query(User).filter(
                     User.department == Department.COMMERCIAL
                 ).all()
@@ -163,25 +166,25 @@ class ClientView(BaseView):
                     for i, commercial in enumerate(commercials, 1):
                         commercial_choices[str(i)] = f"{commercial.full_name} ({commercial.email})"
 
-                    choice = self.get_user_choice(commercial_choices, "Nouveau commercial")
+                    choice = self.get_user_choice(commercial_choices, PROMPTS["new_commercial"])
                     update_data['commercial_contact_id'] = commercials[int(choice) - 1].id
 
             if not update_data:
-                self.display_info("Aucune modification apportée")
+                self.display_info(GENERAL_MESSAGES["no_changes_made"])
                 return
 
-            with self.console.status("[bold green]Mise à jour en cours..."):
+            with self.console.status(STATUS_MESSAGES["updating_client"]):
                 updated_client = self.client_controller.update_client(client_id, **update_data)
 
             self.display_success(CLIENT_MESSAGES["update_success"])
             self._display_client_details(updated_client)
 
         except ValidationError as e:
-            self.display_error(f"Validation échouée: {e}")
+            self.display_error(VALIDATION_MESSAGES["validation_failed"].format(error=e))
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def delete_client_command(self, client_id: int):
         """Supprimer un client (gestion uniquement)"""
@@ -190,37 +193,37 @@ class ClientView(BaseView):
             self.client_controller.set_current_user(current_user)
 
             if not current_user.is_gestion:
-                self.display_error("Seule la gestion peut supprimer des clients")
+                self.display_error(CLIENT_MESSAGES["permission_delete_only"])
                 return
 
             client = self.client_controller.get_client_by_id(client_id)
             if not client:
-                self.display_error("Client non trouvé")
+                self.display_error(CLIENT_MESSAGES["client_not_found"])
                 return
 
             self.display_header(CLIENT_MESSAGES["delete_header"])
             self._display_client_details(client)
 
-            if not self.confirm_action(f"Êtes-vous sûr de vouloir supprimer {client.full_name} ?"):
-                self.display_info("Suppression annulée")
+            if not self.confirm_action(CONFIRMATIONS["delete_client_specific"].format(client_name=client.full_name)):
+                self.display_info(GENERAL_MESSAGES["deletion_cancelled"])
                 return
 
             # Vérifier les dépendances
             if hasattr(client, 'contracts') and client.contracts:
-                self.display_error("Impossible de supprimer: ce client a des contrats actifs")
+                self.display_error(CLIENT_MESSAGES["delete_with_contracts"])
                 return
 
-            with self.console.status("[bold red]Suppression en cours..."):
+            with self.console.status(STATUS_MESSAGES["deleting_client"]):
                 self.db.delete(client)
                 self.db.commit()
 
             self.display_success(CLIENT_MESSAGES["delete_success"])
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
             self.db.rollback()
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def assign_client_command(self, client_id: int, commercial_id: int):
         """Assigner un client à un commercial (gestion uniquement)"""
@@ -229,12 +232,12 @@ class ClientView(BaseView):
             self.client_controller.set_current_user(current_user)
 
             if not current_user.is_gestion:
-                self.display_error("Seule la gestion peut réassigner des clients")
+                self.display_error(CLIENT_MESSAGES["permission_reassign_only"])
                 return
 
             client = self.client_controller.get_client_by_id(client_id)
             if not client:
-                self.display_error("Client non trouvé")
+                self.display_error(CLIENT_MESSAGES["client_not_found"])
                 return
 
             commercial = self.db.query(User).filter(
@@ -242,26 +245,26 @@ class ClientView(BaseView):
                 User.department == Department.COMMERCIAL
             ).first()
             if not commercial:
-                self.display_error("Commercial non trouvé")
+                self.display_error(CLIENT_MESSAGES["commercial_not_found_simple"])
                 return
 
-            with self.console.status("[bold green]Assignation en cours..."):
+            with self.console.status(STATUS_MESSAGES["assigning_client"]):
                 updated_client = self.client_controller.update_client(
                     client_id, commercial_contact_id=commercial_id
                 )
 
             success_content = f"""
-[bold green]Client réassigné avec succès ![/bold green]
+{CLIENT_MESSAGES["reassignment_success_content"]}
 
 [cyan]Client:[/cyan] {updated_client.full_name}
 [cyan]Nouveau commercial:[/cyan] {commercial.full_name} ({commercial.email})
             """
-            self.display_panel(success_content, "RÉASSIGNATION RÉUSSIE", style="green")
+            self.display_panel(success_content, CLIENT_MESSAGES["reassignment_success_title"], style="green")
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def search_clients_command(self):
         """Rechercher des clients par critères"""
@@ -269,38 +272,38 @@ class ClientView(BaseView):
             current_user = self.auth_service.require_authentication()
             self.client_controller.set_current_user(current_user)
 
-            self.display_header("RECHERCHE DE CLIENTS")
+            self.display_header(CLIENT_MESSAGES["search_header"])
 
             criteria = {}
 
-            full_name = self.get_user_input("Nom (optionnel)")
+            full_name = self.get_user_input(PROMPTS["name_optional"])
             if full_name:
                 criteria['full_name'] = full_name
 
-            email = self.get_user_input("Email (optionnel)")
+            email = self.get_user_input(PROMPTS["email_optional"])
             if email:
                 criteria['email'] = email
 
-            company_name = self.get_user_input("Entreprise (optionnel)")
+            company_name = self.get_user_input(PROMPTS["company_optional"])
             if company_name:
                 criteria['company_name'] = company_name
 
             if not criteria:
-                self.display_info("Aucun critère de recherche fourni")
+                self.display_info(GENERAL_MESSAGES["no_search_criteria"])
                 return
 
             clients = self.client_controller.search_clients(**criteria)
 
             if clients:
-                self.display_success(f"{len(clients)} client(s) trouvé(s)")
+                self.display_success(CLIENT_MESSAGES["search_results"].format(count=len(clients)))
                 self._display_clients_table(clients)
             else:
-                self.display_info("Aucun client correspondant trouvé")
+                self.display_info(CLIENT_MESSAGES["no_search_results"])
 
         except (AuthenticationError, AuthorizationError) as e:
-            self.display_error(f"Erreur d'autorisation: {e}")
+            self.display_error(VALIDATION_MESSAGES["authorization_error"].format(error=e))
         except Exception as e:
-            self.display_error(f"Erreur: {e}")
+            self.display_error(VALIDATION_MESSAGES["general_error"].format(error=e))
 
     def _display_clients_table(self, clients):
         """Afficher les clients sous forme de tableau"""
@@ -314,25 +317,35 @@ class ClientView(BaseView):
 
         data = []
         for client in clients:
+            commercial_name = (
+                client.commercial_contact.full_name
+                if client.commercial_contact
+                else CLIENT_MESSAGES["no_commercial_assigned"]
+            )
             data.append([
                 str(client.id),
                 client.full_name,
                 client.email,
                 client.company_name,
-                client.commercial_contact.full_name if client.commercial_contact else "Non assigné"
+                commercial_name
             ])
 
         self.display_table("Clients", columns, data)
 
     def _display_client_details(self, client: Client):
         """Afficher les détails d'un client"""
+        commercial_display = (
+            client.commercial_contact.full_name
+            if client.commercial_contact
+            else CLIENT_MESSAGES["no_commercial_assigned"]
+        )
         client_content = f"""
 [cyan]ID:[/cyan] {client.id}
 [cyan]Nom:[/cyan] {client.full_name}
 [cyan]Email:[/cyan] {client.email}
 [cyan]Téléphone:[/cyan] {client.phone}
 [cyan]Entreprise:[/cyan] {client.company_name}
-[cyan]Commercial:[/cyan] {client.commercial_contact.full_name if client.commercial_contact else "Non assigné"}
+[cyan]Commercial:[/cyan] {commercial_display}
 [cyan]Créé le:[/cyan] {client.created_at.strftime('%Y-%m-%d %H:%M')}
         """
-        self.display_panel(client_content, "DÉTAILS DU CLIENT", style="blue")
+        self.display_panel(client_content, CLIENT_MESSAGES["client_details_title"], style="blue")

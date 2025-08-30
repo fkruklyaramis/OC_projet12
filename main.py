@@ -1,17 +1,18 @@
 from src.database.init_db import init_database
+from src.config.messages import GENERAL_MESSAGES
 
 
 def main():
     """Point d'entrée principal de l'application Epic Events CRM"""
     print("=" * 50)
-    print("    Bienvenue dans Epic Events CRM")
+    print(GENERAL_MESSAGES["app_welcome"])
     print("=" * 50)
 
     # Initialiser la base de données
     if init_database():
-        print("\nL'application est prête à être utilisée!")
+        print(GENERAL_MESSAGES["app_ready"])
     else:
-        print("\nErreur lors de l'initialisation de la base de données.")
+        print(GENERAL_MESSAGES["app_init_error"])
         return
 
 
