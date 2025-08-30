@@ -3,6 +3,7 @@ from src.controllers.user_controller import UserController
 from src.models.user import User
 from src.utils.auth_utils import AuthenticationError, AuthorizationError
 from src.utils.validators import ValidationError
+from src.config.messages import USER_MESSAGES
 from .base_view import BaseView
 
 
@@ -78,12 +79,12 @@ class UserView(BaseView):
             if department:
                 self.display_header(f"COLLABORATEURS - {department.upper()}")
             else:
-                self.display_header("TOUS LES COLLABORATEURS")
+                self.display_header(USER_MESSAGES["list_header"])
 
             users = self.user_controller.get_all_users(department)
 
             if not users:
-                self.display_info("Aucun collaborateur trouvé")
+                self.display_info(USER_MESSAGES["no_users_found"])
                 return
 
             self._display_users_table(users)
@@ -148,7 +149,7 @@ class UserView(BaseView):
             with self.console.status("[bold green]Mise à jour en cours..."):
                 updated_user = self.user_controller.update_user(user_id, **update_data)
 
-            self.display_success("Utilisateur mis à jour avec succès")
+            self.display_success(USER_MESSAGES["update_success"])
             self._display_user_details(updated_user)
 
         except ValidationError as e:

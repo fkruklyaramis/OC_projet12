@@ -2,6 +2,7 @@ from typing import List
 from src.controllers.event_controller import EventController
 from src.models.event import Event
 from src.utils.auth_utils import AuthenticationError, AuthorizationError
+from src.config.messages import EVENT_MESSAGES
 from .base_view import BaseView
 
 
@@ -493,7 +494,7 @@ class EventView(BaseView):
                 **update_data
             )
 
-            self.display_success("✓ Événement mis à jour avec succès")
+            self.display_success(EVENT_MESSAGES["update_success"])
 
             support_display = ("Non assigné" if not updated_event.support_contact
                                else updated_event.support_contact.full_name)

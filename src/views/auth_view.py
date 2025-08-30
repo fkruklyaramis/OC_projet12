@@ -5,6 +5,7 @@ from rich.text import Text
 from rich import box
 from datetime import datetime, timezone
 from src.utils.auth_utils import AuthenticationError
+from src.config.messages import PROMPTS
 from .base_view import BaseView
 
 
@@ -56,9 +57,9 @@ class AuthView(BaseView):
                     self.auth_service.logout()
 
             if not email:
-                email = self.get_user_input("Email")
+                email = self.get_user_input(PROMPTS["email"])
 
-            password = self.get_user_input("Mot de passe", password=True)
+            password = self.get_user_input(PROMPTS["password"], password=True)
 
             # Animation de connexion
             with self.console.status("[bold green]Connexion en cours..."):

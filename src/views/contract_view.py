@@ -2,6 +2,7 @@ from typing import List
 from src.controllers.contract_controller import ContractController
 from src.models.contract import Contract, ContractStatus
 from src.utils.auth_utils import AuthenticationError, AuthorizationError
+from src.config.messages import CONTRACT_MESSAGES
 from .base_view import BaseView
 
 
@@ -20,10 +21,10 @@ class ContractView(BaseView):
 
             contracts = self.contract_controller.get_all_contracts()
 
-            self.display_info("=== TOUS LES CONTRATS ===")
+            self.display_info(CONTRACT_MESSAGES["list_header"])
 
             if not contracts:
-                self.display_info("Aucun contrat trouve")
+                self.display_info(CONTRACT_MESSAGES["no_contracts_found"])
                 return
 
             self._display_contracts_table(contracts)
@@ -430,7 +431,7 @@ class ContractView(BaseView):
                 **update_data
             )
 
-            self.display_success("✓ Contrat mis à jour avec succès")
+            self.display_success(CONTRACT_MESSAGES["update_success"])
 
             # Afficher les nouveaux détails
             self.display_info_box(
