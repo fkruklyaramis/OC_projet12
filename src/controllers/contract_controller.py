@@ -4,6 +4,7 @@ from src.models.contract import Contract, ContractStatus
 from src.models.client import Client
 from src.utils.auth_utils import AuthorizationError
 from src.utils.validators import ValidationError
+from src.services.logging_service import sentry_logger
 from .base_controller import BaseController
 
 
@@ -89,7 +90,7 @@ class ContractController(BaseController):
             if due > total:
                 raise ValidationError("Le montant dû ne peut pas être supérieur au montant total")
 
-            # Validation du statut
+            # Validation du statut et journalisation des signatures
             if 'status' in update_data:
                 if isinstance(update_data['status'], str):
                     validated_data['status'] = self.validator.validate_contract_status(
@@ -98,6 +99,12 @@ class ContractController(BaseController):
                 else:
                     validated_data['status'] = update_data['status']
 
+                # Vérifier si c'est une signature de contrat
+                is_being_signed = (
+                    validated_data['status'] == ContractStatus.SIGNED and
+                    contract.status != ContractStatus.SIGNED
+                )
+
             # Appliquer les mises à jour
             forbidden_fields = ['id', 'client_id', 'commercial_contact_id',
                                 'created_at', 'updated_at']
@@ -105,6 +112,11 @@ class ContractController(BaseController):
 
             self.safe_commit()
             self.db.refresh(contract)
+
+            # Journaliser la signature si applicable
+            if 'status' in validated_data and is_being_signed:
+                sentry_logger.log_contract_signature(contract, self.current_user)
+
             return contract
 
         except ValidationError:

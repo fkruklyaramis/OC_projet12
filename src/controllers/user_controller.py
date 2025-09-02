@@ -5,6 +5,7 @@ from src.models.user import User, Department
 from src.utils.auth_utils import (AuthorizationError,
                                   generate_employee_number, validate_password_strength)
 from src.utils.validators import ValidationError
+from src.services.logging_service import sentry_logger
 from .base_controller import BaseController
 
 
@@ -83,6 +84,10 @@ class UserController(BaseController):
             self.db.add(user)
             self.safe_commit()
             self.db.refresh(user)
+
+            # Journaliser la création
+            sentry_logger.log_user_creation(user, self.current_user)
+
             return user
 
         except IntegrityError as e:
@@ -102,6 +107,10 @@ class UserController(BaseController):
             raise ValidationError("Utilisateur non trouvé")
 
         try:
+            # Sauvegarder les valeurs originales pour journalisation
+            original_values = {}
+            changes = {}
+
             # Validation des champs modifiés
             if 'email' in update_data and update_data['email']:
                 validated_email = self.validator.validate_email(update_data['email'])
@@ -114,17 +123,23 @@ class UserController(BaseController):
                     ).first()
                     if existing_user:
                         raise ValidationError("Cette adresse email est déjà utilisée")
+                    original_values['email'] = user.email
+                    changes['email'] = validated_email
                 update_data['email'] = validated_email
 
             if 'full_name' in update_data and update_data['full_name']:
-                update_data['full_name'] = self.validator.validate_full_name(
-                    update_data['full_name']
-                )
+                validated_name = self.validator.validate_full_name(update_data['full_name'])
+                if validated_name != user.full_name:
+                    original_values['full_name'] = user.full_name
+                    changes['full_name'] = validated_name
+                update_data['full_name'] = validated_name
 
             if 'department' in update_data and update_data['department']:
-                update_data['department'] = self.validator.validate_department(
-                    update_data['department']
-                )
+                validated_dept = self.validator.validate_department(update_data['department'])
+                if validated_dept != user.department:
+                    original_values['department'] = user.department.value
+                    changes['department'] = validated_dept.value
+                update_data['department'] = validated_dept
 
             if 'password' in update_data and update_data['password']:
                 if not validate_password_strength(update_data['password']):
@@ -132,6 +147,7 @@ class UserController(BaseController):
                         "Le mot de passe doit contenir au moins 8 caractères, "
                         "une majuscule, une minuscule, un chiffre et un caractère spécial"
                     )
+                changes['password'] = 'modifié'
 
             # Mettre à jour les champs
             forbidden_fields = ['id', 'employee_number', 'created_at', 'updated_at']
@@ -145,6 +161,11 @@ class UserController(BaseController):
 
             self.safe_commit()
             self.db.refresh(user)
+
+            # Journaliser les modifications si il y en a
+            if changes:
+                sentry_logger.log_user_modification(user, self.current_user, changes)
+
             return user
 
         except ValidationError:
