@@ -3,6 +3,7 @@ from src.config.messages import GENERAL_MESSAGES
 from src.services.logging_service import sentry_logger
 from src.utils.exception_handler import ExceptionHandler
 from dotenv import load_dotenv
+import atexit
 
 
 def main():
@@ -12,6 +13,9 @@ def main():
 
     # Configurer le gestionnaire global d'exceptions
     ExceptionHandler.setup_global_exception_handler()
+
+    # Configurer la fermeture propre de Sentry
+    atexit.register(lambda: sentry_logger.shutdown())
 
     try:
         print("=" * 50)

@@ -4,8 +4,6 @@ Fichier: src/services/logging_service.py
 """
 
 import sentry_sdk
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
 import os
 import logging
 from datetime import datetime
@@ -33,15 +31,11 @@ class SentryLogger:
             sentry_sdk.init(
                 dsn=sentry_dsn,
                 environment=environment,
-                traces_sample_rate=1.0,
-                profiles_sample_rate=1.0,
-                integrations=[
-                    SqlalchemyIntegration(),
-                    LoggingIntegration(
-                        level=logging.INFO,        # Capture info et plus
-                        event_level=logging.ERROR  # Envoyer error et plus à Sentry
-                    ),
-                ]
+                traces_sample_rate=0.0,  # Désactiver complètement les traces
+                profiles_sample_rate=0.0,  # Désactiver complètement les profiles
+                shutdown_timeout=0,  # Pas d'attente à la fermeture
+                default_integrations=False,  # Désactiver toutes les intégrations par défaut
+                integrations=[],  # Pas d'intégrations du tout
             )
             self.is_initialized = True
             logging.info(f"Sentry initialisé avec succès - Environment: {environment}")
@@ -187,6 +181,14 @@ class SentryLogger:
             f"Tentative de connexion {status} pour {email}",
             level=level
         )
+
+    def shutdown(self):
+        """Fermeture propre de Sentry"""
+        if self.is_initialized:
+            try:
+                sentry_sdk.flush(timeout=2)  # Attendre max 2 secondes
+            except Exception:
+                pass  # Ignorer les erreurs de fermeture
 
 
 # Instance globale du logger Sentry

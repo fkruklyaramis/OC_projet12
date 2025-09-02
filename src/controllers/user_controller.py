@@ -86,7 +86,10 @@ class UserController(BaseController):
             self.db.refresh(user)
 
             # Journaliser la création
-            sentry_logger.log_user_creation(user, self.current_user)
+            try:
+                sentry_logger.log_user_creation(user, self.current_user)
+            except Exception:
+                pass  # Ignorer les erreurs de logging pour ne pas impacter l'utilisateur
 
             return user
 

@@ -66,6 +66,8 @@ USER_MESSAGES = {
     'permission_change_password_only': "Seule la gestion peut changer le mot de passe d'autres utilisateurs",
     'prompt_department': "Choisissez le département",
     'prompt_new_department': "Nouveau département",
+    'prompt_email': "Email",
+    'prompt_full_name': "Nom complet",
     'prompt_email_current': "Email ({current})",
     'prompt_full_name_current': "Nom complet ({current})",
     'prompt_new_password': "Nouveau mot de passe",
