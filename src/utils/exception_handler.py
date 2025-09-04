@@ -7,7 +7,7 @@ import sys
 import traceback
 from typing import Any, Callable, TypeVar, Optional
 from functools import wraps
-from src.services.logging_service import sentry_logger
+from src.services.logging_service import SentryLogger
 
 
 F = TypeVar('F', bound=Callable[..., Any])
@@ -34,7 +34,7 @@ def handle_exceptions(reraise: bool = True) -> Callable[[F], F]:
                     'kwargs_keys': list(kwargs.keys()) if kwargs else []
                 }
 
-                sentry_logger.log_exception(e, context)
+                SentryLogger().log_exception(e, context)
 
                 if reraise:
                     raise
@@ -67,7 +67,7 @@ class ExceptionHandler:
             }
 
             # Journaliser avec Sentry
-            sentry_logger.log_exception(exc_value, context)
+            SentryLogger().log_exception(exc_value, context)
 
             # Afficher l'erreur à l'utilisateur
             print(f"\n❌ Une erreur inattendue s'est produite: {exc_value}")
@@ -102,7 +102,7 @@ class ExceptionHandler:
                 'kwargs_provided': len(kwargs) > 0
             }
 
-            sentry_logger.log_exception(e, context)
+            SentryLogger().log_exception(e, context)
             return None
 
 

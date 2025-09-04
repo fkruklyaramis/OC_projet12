@@ -20,7 +20,7 @@ class Singleton(object):
         return class_._instance
 
 
-class SentryLogger():
+class SentryLogger(Singleton):
     """Service de journalisation avec Sentry pour Epic Events CRM"""
 
     def __init__(self):
@@ -79,41 +79,30 @@ class SentryLogger():
     def log_user_creation(self, created_user: User, creator: User):
         """Journaliser la création d'un collaborateur"""
         if not self.is_initialized:
-            print("🔧 DEBUG: Sentry non initialisé - journalisation désactivée")
             return
 
-        print(f"🔧 DEBUG: Envoi log création utilisateur {created_user.full_name} par {creator.full_name}")
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_tag("action", "user_creation")
+            scope.set_tag("department", created_user.department.value)
+            scope.set_context("created_user", {
+                "id": created_user.id,
+                "email": created_user.email,
+                "full_name": created_user.full_name,
+                "department": created_user.department.value,
+                "employee_number": created_user.employee_number
+            })
+            scope.set_context("creator", {
+                "id": creator.id,
+                "email": creator.email,
+                "full_name": creator.full_name,
+                "department": creator.department.value
+            })
 
-        try:
-            with sentry_sdk.configure_scope() as scope:
-                scope.set_tag("action", "user_creation")
-                scope.set_tag("department", created_user.department.value)
-                scope.set_context("created_user", {
-                    "id": created_user.id,
-                    "email": created_user.email,
-                    "full_name": created_user.full_name,
-                    "department": created_user.department.value,
-                    "employee_number": created_user.employee_number
-                })
-                scope.set_context("creator", {
-                    "id": creator.id,
-                    "email": creator.email,
-                    "full_name": creator.full_name,
-                    "department": creator.department.value
-                })
-
-            sentry_sdk.capture_message(
-                f"Création d'un collaborateur: {created_user.full_name} ({created_user.email}) "
-                f"par {creator.full_name}",
-                level="info"  # Changed from "info" to "warning" pour plus de visibilité
-            )
-
-            print("✅ DEBUG: Log création utilisateur envoyé avec succès")
-
-        except Exception as e:
-            print(f"❌ DEBUG: Erreur lors de l'envoi du log: {e}")
-            import traceback
-            traceback.print_exc()
+        sentry_sdk.capture_message(
+            f"Création d'un collaborateur: {created_user.full_name} ({created_user.email}) "
+            f"par {creator.full_name}",
+            level="info"
+        )
 
     def log_user_modification(self, modified_user: User, modifier: User, changes: Dict[str, Any]):
         """Journaliser la modification d'un collaborateur"""
@@ -213,6 +202,3 @@ class SentryLogger():
                 sentry_sdk.flush(timeout=2)  # Attendre max 2 secondes
             except Exception:
                 pass  # Ignorer les erreurs de fermeture
-
-
-sentry_logger = SentryLogger()

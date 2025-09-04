@@ -7,7 +7,7 @@ from src.utils.auth_utils import (
     AuthenticationError, AuthorizationError, PermissionChecker
 )
 from src.config.messages import AUTH_MESSAGES
-from src.services.logging_service import sentry_logger
+from src.services.logging_service import SentryLogger
 
 
 class AuthenticationService:
@@ -24,11 +24,11 @@ class AuthenticationService:
             # Authentifier l'utilisateur
             user = self.db.query(User).filter(User.email == email).first()
             if not user:
-                sentry_logger.log_authentication_attempt(email, False)
+                SentryLogger().log_authentication_attempt(email, False)
                 raise AuthenticationError(AUTH_MESSAGES["user_not_found"])
 
             if not verify_password(user.hashed_password, password):
-                sentry_logger.log_authentication_attempt(email, False)
+                SentryLogger().log_authentication_attempt(email, False)
                 raise AuthenticationError(AUTH_MESSAGES["incorrect_password"])
 
             # Générer et sauvegarder le token JWT
@@ -40,8 +40,8 @@ class AuthenticationService:
             )
 
             if self.jwt_manager.save_token(token):
-                sentry_logger.log_authentication_attempt(email, True)
-                sentry_logger.set_user_context(user)
+                SentryLogger().log_authentication_attempt(email, True)
+                SentryLogger().set_user_context(user)
                 return user
             else:
                 raise Exception(AUTH_MESSAGES["token_save_error"])
@@ -49,12 +49,12 @@ class AuthenticationService:
         except AuthenticationError:
             raise
         except Exception as e:
-            sentry_logger.log_exception(e, {"context": "user_login", "email": email})
+            SentryLogger().log_exception(e, {"context": "user_login", "email": email})
             raise AuthenticationError(AUTH_MESSAGES["login_error"].format(error=e))
 
     def logout(self) -> bool:
         """Déconnexion utilisateur - suppression du token"""
-        sentry_logger.clear_user_context()
+        SentryLogger().clear_user_context()
         return self.jwt_manager.clear_token()
 
     def get_current_user(self) -> Optional[User]:

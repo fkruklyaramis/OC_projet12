@@ -5,7 +5,7 @@ from src.models.user import User, Department
 from src.utils.auth_utils import (AuthorizationError,
                                   generate_employee_number, validate_password_strength)
 from src.utils.validators import ValidationError
-from src.services.logging_service import sentry_logger
+from src.services.logging_service import SentryLogger
 from .base_controller import BaseController
 
 
@@ -86,14 +86,8 @@ class UserController(BaseController):
             self.db.refresh(user)
 
             # Journaliser la création
-            try:
-                print(f"🚀 DEBUG: Appel log_user_creation pour {user.full_name}")
-                sentry_logger.log_user_creation(user, self.current_user)
-                print("🚀 DEBUG: log_user_creation terminé")
-            except Exception as e:
-                print(f"❌ DEBUG: Erreur dans log_user_creation: {e}")
-                import traceback
-                traceback.print_exc()
+
+            SentryLogger().log_user_creation(user, self.current_user)
 
             return user
 
@@ -171,7 +165,7 @@ class UserController(BaseController):
 
             # Journaliser les modifications si il y en a
             if changes:
-                sentry_logger.log_user_modification(user, self.current_user, changes)
+                SentryLogger().log_user_modification(user, self.current_user, changes)
 
             return user
 
