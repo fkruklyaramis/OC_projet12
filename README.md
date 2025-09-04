@@ -158,7 +158,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Initialiser la base de données
-python main.py
+python epicevents.py init
 ```
 
 ## Technologies utilisées

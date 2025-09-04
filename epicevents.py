@@ -6,6 +6,10 @@ from src.views.client_view import ClientView
 from src.views.contract_view import ContractView
 from src.views.event_view import EventView
 from src.views.user_view import UserView
+from src.services.logging_service import sentry_logger
+from src.utils.exception_handler import ExceptionHandler
+from dotenv import load_dotenv
+import atexit
 
 # Configuration Rich-Click
 click.rich_click.USE_RICH_MARKUP = True
@@ -27,7 +31,14 @@ def cli():
     Application de gestion de la relation client pour Epic Events.
     Gérez vos clients, contrats et événements en toute simplicité.
     """
-    pass
+    # Charger les variables d'environnement au démarrage
+    load_dotenv()
+
+    # Configurer le gestionnaire global d'exceptions
+    ExceptionHandler.setup_global_exception_handler()
+
+    # Configurer la fermeture propre de Sentry à la fin du programme
+    atexit.register(lambda: sentry_logger.shutdown())
 
 
 # === COMMANDES D'AUTHENTIFICATION ===

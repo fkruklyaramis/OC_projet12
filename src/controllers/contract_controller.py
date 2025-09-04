@@ -4,7 +4,7 @@ from src.models.contract import Contract, ContractStatus
 from src.models.client import Client
 from src.utils.auth_utils import AuthorizationError
 from src.utils.validators import ValidationError
-from src.services.logging_service import sentry_logger
+from src.services.logging_service import SentryLogger
 from .base_controller import BaseController
 
 
@@ -115,7 +115,18 @@ class ContractController(BaseController):
 
             # Journaliser la signature si applicable
             if 'status' in validated_data and is_being_signed:
-                sentry_logger.log_contract_signature(contract, self.current_user)
+                print(f"🔥 DEBUG: Tentative log signature contrat {contract.id}")
+                print(f"    - Client: {getattr(contract.client, 'company_name', 'NON CHARGÉ')}")
+                print(f"    - Commercial: {getattr(self.current_user, 'full_name', 'NON DÉFINI')}")
+                try:
+                    # Force le chargement des relations
+                    self.db.refresh(contract)
+                    SentryLogger().log_contract_signature(contract, self.current_user)
+                    print("✅ DEBUG: Log signature envoyé avec succès !")
+                except Exception as e:
+                    print(f"❌ DEBUG: ERREUR lors du log: {e}")
+                    import traceback
+                    traceback.print_exc()
 
             return contract
 

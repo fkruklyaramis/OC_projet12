@@ -87,9 +87,13 @@ class UserController(BaseController):
 
             # Journaliser la création
             try:
+                print(f"🚀 DEBUG: Appel log_user_creation pour {user.full_name}")
                 sentry_logger.log_user_creation(user, self.current_user)
-            except Exception:
-                pass  # Ignorer les erreurs de logging pour ne pas impacter l'utilisateur
+                print("🚀 DEBUG: log_user_creation terminé")
+            except Exception as e:
+                print(f"❌ DEBUG: Erreur dans log_user_creation: {e}")
+                import traceback
+                traceback.print_exc()
 
             return user
 

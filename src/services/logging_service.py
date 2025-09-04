@@ -11,12 +11,25 @@ from typing import Dict, Any, Optional
 from src.models.user import User
 
 
-class SentryLogger:
+class Singleton(object):
+    _instance = None
+
+    def __new__(class_, *args, **kwargs):
+        if not isinstance(class_._instance, class_):
+            class_._instance = object.__new__(class_, *args, **kwargs)
+        return class_._instance
+
+
+class SentryLogger():
     """Service de journalisation avec Sentry pour Epic Events CRM"""
 
     def __init__(self):
         self.is_initialized = False
         self._setup_sentry()
+
+    def __del__(self):
+        if self.is_initialized:
+            sentry_sdk.flush(timeout=2.0)
 
     def _setup_sentry(self):
         """Initialiser Sentry avec la configuration"""
@@ -66,30 +79,41 @@ class SentryLogger:
     def log_user_creation(self, created_user: User, creator: User):
         """Journaliser la création d'un collaborateur"""
         if not self.is_initialized:
+            print("🔧 DEBUG: Sentry non initialisé - journalisation désactivée")
             return
 
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_tag("action", "user_creation")
-            scope.set_tag("department", created_user.department.value)
-            scope.set_context("created_user", {
-                "id": created_user.id,
-                "email": created_user.email,
-                "full_name": created_user.full_name,
-                "department": created_user.department.value,
-                "employee_number": created_user.employee_number
-            })
-            scope.set_context("creator", {
-                "id": creator.id,
-                "email": creator.email,
-                "full_name": creator.full_name,
-                "department": creator.department.value
-            })
+        print(f"🔧 DEBUG: Envoi log création utilisateur {created_user.full_name} par {creator.full_name}")
 
-        sentry_sdk.capture_message(
-            f"Création d'un collaborateur: {created_user.full_name} ({created_user.email}) "
-            f"par {creator.full_name}",
-            level="info"
-        )
+        try:
+            with sentry_sdk.configure_scope() as scope:
+                scope.set_tag("action", "user_creation")
+                scope.set_tag("department", created_user.department.value)
+                scope.set_context("created_user", {
+                    "id": created_user.id,
+                    "email": created_user.email,
+                    "full_name": created_user.full_name,
+                    "department": created_user.department.value,
+                    "employee_number": created_user.employee_number
+                })
+                scope.set_context("creator", {
+                    "id": creator.id,
+                    "email": creator.email,
+                    "full_name": creator.full_name,
+                    "department": creator.department.value
+                })
+
+            sentry_sdk.capture_message(
+                f"Création d'un collaborateur: {created_user.full_name} ({created_user.email}) "
+                f"par {creator.full_name}",
+                level="info"  # Changed from "info" to "warning" pour plus de visibilité
+            )
+
+            print("✅ DEBUG: Log création utilisateur envoyé avec succès")
+
+        except Exception as e:
+            print(f"❌ DEBUG: Erreur lors de l'envoi du log: {e}")
+            import traceback
+            traceback.print_exc()
 
     def log_user_modification(self, modified_user: User, modifier: User, changes: Dict[str, Any]):
         """Journaliser la modification d'un collaborateur"""
@@ -131,7 +155,7 @@ class SentryLogger:
                 "id": contract.id,
                 "client_name": contract.client.company_name,
                 "total_amount": float(contract.total_amount),
-                "remaining_amount": float(contract.remaining_amount)
+                "remaining_amount": float(contract.amount_due)  # Correct field name
             })
             scope.set_context("signer", {
                 "id": signer.id,
@@ -143,7 +167,7 @@ class SentryLogger:
         sentry_sdk.capture_message(
             f"Signature de contrat: ID {contract.id} pour {contract.client.company_name} "
             f"(Montant: {contract.total_amount}€) par {signer.full_name}",
-            level="info"
+            level="warning"  # Changed from "info" to "warning" pour plus de visibilité
         )
 
     def log_exception(self, exception: Exception, context: Optional[Dict[str, Any]] = None):
@@ -191,5 +215,4 @@ class SentryLogger:
                 pass  # Ignorer les erreurs de fermeture
 
 
-# Instance globale du logger Sentry
 sentry_logger = SentryLogger()

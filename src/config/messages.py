@@ -192,6 +192,24 @@ GENERAL_MESSAGES = {
     'processing': "Traitement en cours...",
     'processing_default': "Traitement",
     'update_instructions': "[yellow]Laissez vide pour conserver la valeur actuelle[/yellow]",
+    # Messages de base de données
+    'db_dropping_tables': "Suppression des tables existantes...",
+    'db_tables_dropped': "Tables supprimées avec succès",
+    'db_creating_tables': "Création des tables de la base de données...",
+    'db_tables_created': "Tables créées avec succès",
+    'db_creating_users': "Création des utilisateurs de test...",
+    'db_users_created': "Utilisateurs de test créés avec succès",
+    'db_creating_clients': "Création des clients de test...",
+    'db_clients_created': "Clients de test créés avec succès",
+    'db_creating_contracts': "Création des contrats de test...",
+    'db_contracts_created': "Contrats de test créés avec succès",
+    'db_creating_events': "Création des événements de test...",
+    'db_events_created': "Événements de test créés avec succès",
+    'db_initialization_complete': "Initialisation de la base de données terminée",
+    # Messages d'application
+    'app_welcome': "Bienvenue dans Epic Events CRM",
+    'app_ready': "Application prête à être utilisée",
+    'app_init_error': "Erreur lors de l'initialisation de l'application",
 }
 
 # ===== PROMPTS UTILISATEUR =====
