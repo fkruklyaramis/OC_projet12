@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 from src.models.user import Department
 from src.models.contract import ContractStatus
+from decimal import Decimal
 from src.config.messages import VALIDATION_MESSAGES
 
 
@@ -121,7 +122,7 @@ class DataValidator:
         if amount is None:
             raise ValidationError(VALIDATION_MESSAGES["amount_required"].format(field=field_name))
 
-        if not isinstance(amount, (int, float)):
+        if not isinstance(amount, (int, float, Decimal)):
             raise ValidationError(VALIDATION_MESSAGES["amount_must_be_number"].format(field=field_name))
 
         amount = float(amount)

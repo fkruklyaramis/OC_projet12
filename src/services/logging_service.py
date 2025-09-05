@@ -29,7 +29,12 @@ class SentryLogger(Singleton):
 
     def __del__(self):
         if self.is_initialized:
-            sentry_sdk.flush(timeout=2.0)
+            try:
+                # Éviter les erreurs lors de la fermeture de l'interpréteur
+                sentry_sdk.flush(timeout=1.0)
+            except (RuntimeError, Exception):
+                # Ignorer les erreurs de threading lors de la fermeture
+                pass
 
     def _setup_sentry(self):
         """Initialiser Sentry avec la configuration"""
@@ -44,11 +49,10 @@ class SentryLogger(Singleton):
             sentry_sdk.init(
                 dsn=sentry_dsn,
                 environment=environment,
-                traces_sample_rate=0.0,  # Désactiver complètement les traces
-                profiles_sample_rate=0.0,  # Désactiver complètement les profiles
-                shutdown_timeout=0,  # Pas d'attente à la fermeture
-                default_integrations=False,  # Désactiver toutes les intégrations par défaut
-                integrations=[],  # Pas d'intégrations du tout
+                traces_sample_rate=0.1,  # Traces légères pour le debugging
+                profiles_sample_rate=0.0,  # Désactiver les profiles
+                shutdown_timeout=2,  # Délai pour l'envoi à la fermeture
+                debug=False,  # Activer le debug en développement si nécessaire
             )
             self.is_initialized = True
             logging.info(f"Sentry initialisé avec succès - Environment: {environment}")

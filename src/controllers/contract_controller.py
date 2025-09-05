@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 from src.models.contract import Contract, ContractStatus
 from src.models.client import Client
@@ -177,6 +178,62 @@ class ContractController(BaseController):
 
         if not self.current_user.is_commercial:
             raise AuthorizationError("Seuls les commerciaux peuvent consulter leurs contrats")
+
+        return self.db.query(Contract).options(
+            joinedload(Contract.client),
+            joinedload(Contract.commercial_contact),
+            joinedload(Contract.events)
+        ).filter(Contract.commercial_contact_id == self.current_user.id).all()
+
+    def sign_contract(self, contract_id: int) -> Contract:
+        """Signer un contrat"""
+        contract = self.get_contract_by_id(contract_id)
+        if not contract:
+            raise ValidationError("Contrat non trouvé")
+
+        # Seule la gestion peut signer des contrats
+        if not self.current_user.is_gestion:
+            raise AuthorizationError("Seule la gestion peut signer des contrats")
+
+        if contract.status == ContractStatus.SIGNED:
+            raise ValidationError("Ce contrat est déjà signé")
+
+        contract.status = ContractStatus.SIGNED
+        contract.signed_date = datetime.now(timezone.utc)
+
+        self.safe_commit()
+        self.db.refresh(contract)
+
+        # Journaliser la signature
+        try:
+            from src.services.logging_service import SentryLogger
+            SentryLogger().log_contract_signature(contract, self.current_user)
+        except Exception as e:
+            print(f"Erreur lors du log de signature: {e}")
+
+        return contract
+
+    def delete_contract(self, contract_id: int) -> bool:
+        """Supprimer un contrat"""
+        contract = self.get_contract_by_id(contract_id)
+        if not contract:
+            raise ValidationError("Contrat non trouvé")
+
+        # Seule la gestion peut supprimer des contrats
+        if not self.current_user.is_gestion:
+            raise AuthorizationError("Seule la gestion peut supprimer des contrats")
+
+        # Vérifier qu'il n'y a pas d'événements associés
+        if contract.events:
+            raise ValidationError("Impossible de supprimer un contrat avec des événements associés")
+
+        try:
+            self.db.delete(contract)
+            self.safe_commit()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            raise Exception(f"Erreur lors de la suppression: {e}")
 
         return self.db.query(Contract).options(
             joinedload(Contract.client),

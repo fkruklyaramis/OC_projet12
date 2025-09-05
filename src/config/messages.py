@@ -167,11 +167,14 @@ STATUS_MESSAGES = {
 # ===== MESSAGES DE VALIDATION =====
 VALIDATION_MESSAGES = {
     'email_invalid': "Format d'email invalide",
+    'email_invalid_format': "Format d'email invalide",
     'email_required': "L'email est obligatoire",
     'phone_invalid': "Format de téléphone invalide",
     'name_required': "Le nom est obligatoire",
     'password_required': "Le mot de passe est obligatoire",
     'amount_invalid': "Montant invalide",
+    'amount_required': "{field} est obligatoire",
+    'amount_must_be_number': "{field} doit être un nombre",
     'date_invalid': "Format de date invalide",
     'field_required': "Ce champ est obligatoire",
     'information_required': "Cette information est obligatoire",
