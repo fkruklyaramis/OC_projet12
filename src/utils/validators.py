@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from src.models.user import Department
 from src.models.contract import ContractStatus
 from decimal import Decimal
@@ -167,7 +167,7 @@ class DataValidator:
             raise ValidationError(VALIDATION_MESSAGES["end_date_before_start"])
 
         # Vérifier que l'événement n'est pas dans le passé (sauf pour les tests)
-        if start_date < datetime.now():
+        if start_date < datetime.now(timezone.utc):
             raise ValidationError(VALIDATION_MESSAGES["start_date_past"])
 
     @staticmethod

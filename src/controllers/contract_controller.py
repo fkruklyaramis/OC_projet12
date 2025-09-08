@@ -199,6 +199,7 @@ class ContractController(BaseController):
             raise ValidationError("Ce contrat est déjà signé")
 
         contract.status = ContractStatus.SIGNED
+        contract.signed = True  # Ajouter cette ligne
         contract.signed_date = datetime.now(timezone.utc)
 
         self.safe_commit()

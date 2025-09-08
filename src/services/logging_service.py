@@ -6,7 +6,7 @@ Fichier: src/services/logging_service.py
 import sentry_sdk
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from src.models.user import User
 
@@ -30,10 +30,8 @@ class SentryLogger(Singleton):
     def __del__(self):
         if self.is_initialized:
             try:
-                # Éviter les erreurs lors de la fermeture de l'interpréteur
                 sentry_sdk.flush(timeout=1.0)
             except (RuntimeError, Exception):
-                # Ignorer les erreurs de threading lors de la fermeture
                 pass
 
     def _setup_sentry(self):
@@ -186,7 +184,7 @@ class SentryLogger(Singleton):
             scope.set_tag("success", str(success))
             scope.set_context("auth_attempt", {
                 "email": email,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "ip_address": ip_address or "unknown",
                 "success": success
             })
