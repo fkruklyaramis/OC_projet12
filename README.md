@@ -673,23 +673,6 @@ SENTRY_DSN=https://your_key@sentry.io/project_id
 SENTRY_ENVIRONMENT=development  # ou production
 ```
 
-#### Initialisation automatique
-```python
-# Service singleton avec configuration optimisée
-class SentryLogger(Singleton):
-    def _setup_sentry(self):
-        # Désactivation automatique en mode test
-        if os.getenv('PYTEST_CURRENT_TEST'):
-            return
-            
-        sentry_sdk.init(
-            dsn=sentry_dsn,
-            environment=environment,
-            traces_sample_rate=0.1,
-            shutdown_timeout=2,
-            integrations=[],  # Évite les conflits
-        )
-```
 
 ### 📈 Événements monitorés
 
@@ -707,6 +690,7 @@ logger.log_authentication_attempt(
 ```python
 # Création d'utilisateurs
 logger.log_user_creation(created_user, creator)
+
 
 # Signature de contrats
 logger.log_contract_signature(contract, signer)
@@ -733,42 +717,6 @@ logger.set_user_context(current_user)
 logger.clear_user_context()
 ```
 
-### 🎯 Tableaux de bord Sentry
-
-#### Métriques surveillées
-- **Taux d'erreur** : Pourcentage d'erreurs par heure
-- **Performance** : Temps de réponse des opérations
-- **Utilisateurs actifs** : Sessions et activité
-- **Opérations métier** : Créations, modifications, suppressions
-
-#### Alertes configurées
-- **Erreurs critiques** : Notification immédiate
-- **Pic d'erreurs** : Seuil de 10 erreurs/minute
-- **Performance dégradée** : Latence > 2 secondes
-- **Échecs d'authentification** : Tentatives suspectes
-
-### 🔍 Exemples de monitoring
-
-#### Script de test Sentry
-```bash
-# Tester l'envoi vers Sentry
-python test_sentry.py
-```
-
-#### Sortie attendue
-```
-✅ Sentry initialisé avec succès
-📤 Message de test envoyé
-🐛 Exception de test envoyée
-🚀 Flush forcé - vérifiez votre dashboard Sentry
-```
-
-#### Forcer l'envoi des données
-```python
-# Dans l'application
-logger = SentryLogger()
-logger.force_flush()  # Envoi immédiat vers Sentry
-```
 
 ### 🛡️ Sécurité et vie privée
 
@@ -777,29 +725,6 @@ logger.force_flush()  # Envoi immédiat vers Sentry
 - **Tokens JWT** : Exclus du monitoring
 - **Données personnelles** : Hashées ou anonymisées
 
-#### Configuration sécurisée
-```python
-# Désactivation automatique en développement
-if environment == 'development':
-    sentry_sdk.init(debug=False)  # Pas de debug en prod
-```
-
-### 📞 Support et debugging
-
-#### Informations de debug
-```bash
-# Vérifier la configuration Sentry
-python -c "from src.services.logging_service import SentryLogger; print(SentryLogger().is_initialized)"
-```
-
-#### Logs applicatifs
-```python
-import logging
-logging.info("Sentry initialisé avec succès")
-logging.error("Erreur de configuration Sentry")
-```
-
----
 
 ## 📝 Notes de développement
 
@@ -812,14 +737,6 @@ logging.error("Erreur de configuration Sentry")
 - **Sentry** : Monitoring et alertes
 - **pytest** : Framework de tests
 
-### Prochaines évolutions
-- [ ] API REST avec FastAPI
-- [ ] Interface web avec React
-- [ ] Notifications email
-- [ ] Export de rapports PDF
-- [ ] Intégration calendrier
-- [ ] Module de facturation
-
 ---
 
-**Epic Events CRM** - Version 1.0 | Développé avec ❤️ en Python
+**Epic Events CRM** 
