@@ -28,16 +28,25 @@ class SentryLogger(Singleton):
         self._setup_sentry()
 
     def __del__(self):
-        if self.is_initialized:
+        if hasattr(self, 'is_initialized') and self.is_initialized:
             try:
+                # Laisser un peu de temps pour l'envoi des données
                 sentry_sdk.flush(timeout=1.0)
             except (RuntimeError, Exception):
+                # Ignorer toutes les erreurs lors de la destruction
                 pass
+            finally:
+                self.is_initialized = False
 
     def _setup_sentry(self):
         """Initialiser Sentry avec la configuration"""
         sentry_dsn = os.getenv('SENTRY_DSN')
         environment = os.getenv('SENTRY_ENVIRONMENT', 'development')
+
+        # En mode test, ne pas initialiser Sentry pour éviter les conflits
+        if os.getenv('PYTEST_CURRENT_TEST'):
+            logging.info("Mode test détecté - Sentry désactivé")
+            return
 
         if not sentry_dsn or sentry_dsn == 'your_sentry_dsn_here':
             logging.warning("Sentry DSN non configuré - journalisation désactivée")
@@ -47,10 +56,11 @@ class SentryLogger(Singleton):
             sentry_sdk.init(
                 dsn=sentry_dsn,
                 environment=environment,
-                traces_sample_rate=0.1,  # Traces légères pour le debugging
+                traces_sample_rate=0.1,  # Remettre un peu de traces
                 profiles_sample_rate=0.0,  # Désactiver les profiles
-                shutdown_timeout=2,  # Délai pour l'envoi à la fermeture
-                debug=False,  # Activer le debug en développement si nécessaire
+                shutdown_timeout=2,  # Laisser un peu de temps pour l'envoi
+                debug=False,
+                integrations=[],  # Aucune intégration pour éviter les conflits
             )
             self.is_initialized = True
             logging.info(f"Sentry initialisé avec succès - Environment: {environment}")
@@ -201,6 +211,15 @@ class SentryLogger(Singleton):
         """Fermeture propre de Sentry"""
         if self.is_initialized:
             try:
-                sentry_sdk.flush(timeout=2)  # Attendre max 2 secondes
+                sentry_sdk.flush(timeout=2)  # Attendre max 2 secondes pour l'envoi
+                self.is_initialized = False
             except Exception:
                 pass  # Ignorer les erreurs de fermeture
+
+    def force_flush(self):
+        """Forcer l'envoi immédiat des données vers Sentry"""
+        if self.is_initialized:
+            try:
+                sentry_sdk.flush(timeout=3)  # Plus de temps pour un flush forcé
+            except Exception:
+                pass
