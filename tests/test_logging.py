@@ -159,7 +159,7 @@ class TestSentryLogger(unittest.TestCase):
         """Test du flush forcé"""
         logger = SentryLogger()
         logger.force_flush()
-        
+
         if logger.is_initialized:
             mock_flush.assert_called_once_with(timeout=3)
 
