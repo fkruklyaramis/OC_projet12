@@ -17,6 +17,7 @@ class AuthenticationService:
         self.db = db_session
         self.jwt_manager = JWTManager()
         self.permission_checker = PermissionChecker()
+        self.sentry_logger = SentryLogger()
 
     def login(self, email: str, password: str) -> Optional[User]:
         """Connexion utilisateur avec génération de token JWT"""
@@ -24,11 +25,11 @@ class AuthenticationService:
             # Authentifier l'utilisateur
             user = self.db.query(User).filter(User.email == email).first()
             if not user:
-                SentryLogger().log_authentication_attempt(email, False)
+                self.sentry_logger.log_authentication_attempt(email, False)
                 raise AuthenticationError(AUTH_MESSAGES["user_not_found"])
 
             if not verify_password(user.hashed_password, password):
-                SentryLogger().log_authentication_attempt(email, False)
+                self.sentry_logger.log_authentication_attempt(email, False)
                 raise AuthenticationError(AUTH_MESSAGES["incorrect_password"])
 
             # Générer et sauvegarder le token JWT
@@ -40,8 +41,8 @@ class AuthenticationService:
             )
 
             if self.jwt_manager.save_token(token):
-                SentryLogger().log_authentication_attempt(email, True)
-                SentryLogger().set_user_context(user)
+                self.sentry_logger.log_authentication_attempt(email, True)
+                self.sentry_logger.set_user_context(user)
                 return user
             else:
                 raise Exception(AUTH_MESSAGES["token_save_error"])
@@ -53,9 +54,17 @@ class AuthenticationService:
             raise AuthenticationError(AUTH_MESSAGES["login_error"].format(error=e))
 
     def logout(self) -> bool:
-        """Déconnexion utilisateur - suppression du token"""
-        SentryLogger().clear_user_context()
-        return self.jwt_manager.clear_token()
+        """Déconnexion de l'utilisateur"""
+        try:
+            # Effacer le contexte utilisateur de Sentry
+            self.sentry_logger.clear_user_context()
+
+            # Invalider le token JWT
+            return self.jwt_manager.logout()
+
+        except Exception as e:
+            self.sentry_logger.log_exception(e, {"action": "logout"})
+            return False
 
     def get_current_user(self) -> Optional[User]:
         """Récupérer l'utilisateur actuellement connecté"""

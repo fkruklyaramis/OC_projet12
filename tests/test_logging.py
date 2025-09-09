@@ -21,11 +21,12 @@ class TestSentryLogger(unittest.TestCase):
         self.assertTrue(hasattr(logger, 'is_initialized'))
         self.assertTrue(hasattr(logger, '_setup_sentry'))
 
-    def test_sentry_logger_singleton(self):
-        """Test pattern singleton"""
+    def test_sentry_logger_instances(self):
+        """Test que chaque instance est indépendante (plus de singleton)"""
         logger1 = SentryLogger()
         logger2 = SentryLogger()
-        self.assertIs(logger1, logger2)
+        self.assertIsNot(logger1, logger2)  # Chaque instance est maintenant différente
+        self.assertEqual(logger1.is_initialized, logger2.is_initialized)  # Mais même état
 
     @patch('sentry_sdk.capture_message')
     def test_log_authentication_attempt_success(self, mock_capture):
@@ -104,16 +105,16 @@ class TestSentryLogger(unittest.TestCase):
         if logger.is_initialized:
             mock_set_user.assert_called_once_with(None)
 
-    def test_shutdown(self):
-        """Test fermeture propre"""
+    def test_destructor_flush(self):
+        """Test du flush dans le destructeur (remplace shutdown)"""
         logger = SentryLogger()
 
         # Ne doit pas lever d'exception
         try:
-            logger.shutdown()
+            logger.force_flush()
             self.assertTrue(True)
         except Exception:
-            self.fail("shutdown() ne doit pas lever d'exception")
+            self.fail("force_flush() ne doit pas lever d'exception")
 
     @patch.dict(os.environ, {'SENTRY_DSN': 'test_dsn'})
     @patch('sentry_sdk.init')

@@ -4,6 +4,11 @@ Configuration globale pour les tests - Tests simples sans mock
 import pytest
 import tempfile
 import os
+import sys
+
+# Ajouter le répertoire racine au PYTHONPATH pour les imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.database.connection import Base

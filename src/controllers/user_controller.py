@@ -14,6 +14,7 @@ class UserController(BaseController):
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
+        self.sentry_logger = SentryLogger()
 
     def get_all_users(self, department: str = None) -> List[User]:
         """Récupérer tous les utilisateurs (gestion uniquement)"""
@@ -87,7 +88,7 @@ class UserController(BaseController):
 
             # Journaliser la création
 
-            SentryLogger().log_user_creation(user, self.current_user)
+            self.sentry_logger.log_user_creation(user, self.current_user)
 
             return user
 
@@ -165,7 +166,7 @@ class UserController(BaseController):
 
             # Journaliser les modifications si il y en a
             if changes:
-                SentryLogger().log_user_modification(user, self.current_user, changes)
+                self.sentry_logger.log_user_modification(user, self.current_user, changes)
 
             return user
 

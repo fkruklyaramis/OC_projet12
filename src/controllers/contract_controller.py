@@ -14,6 +14,7 @@ class ContractController(BaseController):
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)
+        self.sentry_logger = SentryLogger()
 
     def create_contract(self, client_id: int, total_amount: float,
                         amount_due: float = None) -> Contract:
@@ -122,7 +123,7 @@ class ContractController(BaseController):
                 try:
                     # Force le chargement des relations
                     self.db.refresh(contract)
-                    SentryLogger().log_contract_signature(contract, self.current_user)
+                    self.sentry_logger.log_contract_signature(contract, self.current_user)
                     print("✅ DEBUG: Log signature envoyé avec succès !")
                 except Exception as e:
                     print(f"❌ DEBUG: ERREUR lors du log: {e}")
@@ -207,8 +208,7 @@ class ContractController(BaseController):
 
         # Journaliser la signature
         try:
-            from src.services.logging_service import SentryLogger
-            SentryLogger().log_contract_signature(contract, self.current_user)
+            self.sentry_logger.log_contract_signature(contract, self.current_user)
         except Exception as e:
             print(f"Erreur lors du log de signature: {e}")
 

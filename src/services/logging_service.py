@@ -11,39 +11,27 @@ from typing import Dict, Any, Optional
 from src.models.user import User
 
 
-class Singleton(object):
-    _instance = None
-
-    def __new__(class_, *args, **kwargs):
-        if not isinstance(class_._instance, class_):
-            class_._instance = object.__new__(class_, *args, **kwargs)
-        return class_._instance
-
-
-class SentryLogger(Singleton):
-    """Service de journalisation avec Sentry pour Epic Events CRM"""
+class SentryLogger:
+    """Service de journalisation simple avec Sentry"""
 
     def __init__(self):
         self.is_initialized = False
         self._setup_sentry()
 
     def __del__(self):
+        """Flush des données Sentry avant destruction"""
         if hasattr(self, 'is_initialized') and self.is_initialized:
             try:
-                # Laisser un peu de temps pour l'envoi des données
-                sentry_sdk.flush(timeout=1.0)
-            except (RuntimeError, Exception):
-                # Ignorer toutes les erreurs lors de la destruction
-                pass
-            finally:
-                self.is_initialized = False
+                sentry_sdk.flush(timeout=2)
+            except Exception:
+                pass  # Ignorer les erreurs lors du flush
 
     def _setup_sentry(self):
-        """Initialiser Sentry avec la configuration"""
+        """Initialiser Sentry avec configuration simple"""
         sentry_dsn = os.getenv('SENTRY_DSN')
         environment = os.getenv('SENTRY_ENVIRONMENT', 'development')
 
-        # En mode test, ne pas initialiser Sentry pour éviter les conflits
+        # Ne pas initialiser en mode test
         if os.getenv('PYTEST_CURRENT_TEST'):
             logging.info("Mode test détecté - Sentry désactivé")
             return
@@ -53,17 +41,19 @@ class SentryLogger(Singleton):
             return
 
         try:
+            # Configuration Sentry simple et robuste
             sentry_sdk.init(
                 dsn=sentry_dsn,
                 environment=environment,
-                traces_sample_rate=0.1,  # Remettre un peu de traces
-                profiles_sample_rate=0.0,  # Désactiver les profiles
-                shutdown_timeout=2,  # Laisser un peu de temps pour l'envoi
+                traces_sample_rate=0.0,  # Pas de tracing pour simplifier
+                profiles_sample_rate=0.0,  # Pas de profiling
+                max_breadcrumbs=50,
                 debug=False,
-                integrations=[],  # Aucune intégration pour éviter les conflits
+                attach_stacktrace=True,
+                send_default_pii=False,  # Pas d'infos personnelles par défaut
             )
             self.is_initialized = True
-            logging.info(f"Sentry initialisé avec succès - Environment: {environment}")
+            logging.info(f"Sentry initialisé - Environment: {environment}")
 
         except Exception as e:
             logging.error(f"Erreur lors de l'initialisation de Sentry: {e}")
@@ -93,133 +83,104 @@ class SentryLogger(Singleton):
         if not self.is_initialized:
             return
 
-        with sentry_sdk.configure_scope() as scope:
+        with sentry_sdk.push_scope() as scope:
             scope.set_tag("action", "user_creation")
             scope.set_tag("department", created_user.department.value)
-            scope.set_context("created_user", {
+            scope.set_extra("created_user", {
                 "id": created_user.id,
                 "email": created_user.email,
                 "full_name": created_user.full_name,
                 "department": created_user.department.value,
                 "employee_number": created_user.employee_number
             })
-            scope.set_context("creator", {
+            scope.set_extra("creator", {
                 "id": creator.id,
                 "email": creator.email,
                 "full_name": creator.full_name,
                 "department": creator.department.value
             })
 
-        sentry_sdk.capture_message(
-            f"Création d'un collaborateur: {created_user.full_name} ({created_user.email}) "
-            f"par {creator.full_name}",
-            level="info"
-        )
+            sentry_sdk.capture_message(
+                f"Création collaborateur: {created_user.full_name} par {creator.full_name}",
+                level="info"
+            )
 
     def log_user_modification(self, modified_user: User, modifier: User, changes: Dict[str, Any]):
         """Journaliser la modification d'un collaborateur"""
         if not self.is_initialized:
             return
 
-        with sentry_sdk.configure_scope() as scope:
+        with sentry_sdk.push_scope() as scope:
             scope.set_tag("action", "user_modification")
-            scope.set_tag("department", modified_user.department.value)
-            scope.set_context("modified_user", {
-                "id": modified_user.id,
-                "email": modified_user.email,
-                "full_name": modified_user.full_name,
-                "department": modified_user.department.value
-            })
-            scope.set_context("modifier", {
-                "id": modifier.id,
-                "email": modifier.email,
-                "full_name": modifier.full_name,
-                "department": modifier.department.value
-            })
-            scope.set_context("changes", changes)
+            scope.set_extra("modified_user", modified_user.full_name)
+            scope.set_extra("modifier", modifier.full_name)
+            scope.set_extra("changes", changes)
 
-        sentry_sdk.capture_message(
-            f"Modification d'un collaborateur: {modified_user.full_name} "
-            f"par {modifier.full_name} - Champs modifiés: {', '.join(changes.keys())}",
-            level="info"
-        )
+            sentry_sdk.capture_message(
+                f"Modification collaborateur: {modified_user.full_name} par {modifier.full_name}",
+                level="info"
+            )
 
     def log_contract_signature(self, contract, signer: User):
         """Journaliser la signature d'un contrat"""
         if not self.is_initialized:
             return
 
-        with sentry_sdk.configure_scope() as scope:
+        with sentry_sdk.push_scope() as scope:
             scope.set_tag("action", "contract_signature")
             scope.set_tag("contract_id", str(contract.id))
-            scope.set_context("contract", {
+            scope.set_extra("contract", {
                 "id": contract.id,
                 "client_name": contract.client.company_name,
                 "total_amount": float(contract.total_amount),
-                "remaining_amount": float(contract.amount_due)  # Correct field name
             })
-            scope.set_context("signer", {
-                "id": signer.id,
-                "email": signer.email,
-                "full_name": signer.full_name,
-                "department": signer.department.value
-            })
+            scope.set_extra("signer", signer.full_name)
 
-        sentry_sdk.capture_message(
-            f"Signature de contrat: ID {contract.id} pour {contract.client.company_name} "
-            f"(Montant: {contract.total_amount}€) par {signer.full_name}",
-            level="warning"  # Changed from "info" to "warning" pour plus de visibilité
-        )
+            sentry_sdk.capture_message(
+                f"Signature contrat ID {contract.id} par {signer.full_name}",
+                level="warning"
+            )
 
     def log_exception(self, exception: Exception, context: Optional[Dict[str, Any]] = None):
-        """Journaliser une exception inattendue"""
+        """Journaliser une exception"""
         if not self.is_initialized:
-            logging.error(f"Exception non gérée: {exception}")
+            logging.error(f"Exception: {exception}")
             return
 
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_tag("action", "unexpected_exception")
+        with sentry_sdk.push_scope() as scope:
+            scope.set_tag("action", "exception")
             if context:
-                scope.set_context("additional_context", context)
+                scope.set_extra("context", context)
 
-        sentry_sdk.capture_exception(exception)
+            sentry_sdk.capture_exception(exception)
 
     def log_authentication_attempt(self, email: str, success: bool, ip_address: str = None):
         """Journaliser une tentative d'authentification"""
         if not self.is_initialized:
             return
 
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_tag("action", "authentication_attempt")
+        with sentry_sdk.push_scope() as scope:
+            scope.set_tag("action", "authentication")
             scope.set_tag("success", str(success))
-            scope.set_context("auth_attempt", {
+            scope.set_extra("auth_attempt", {
                 "email": email,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "success": success,
                 "ip_address": ip_address or "unknown",
-                "success": success
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
 
-        level = "info" if success else "warning"
-        status = "réussie" if success else "échouée"
+            level = "info" if success else "warning"
+            status = "réussie" if success else "échouée"
 
-        sentry_sdk.capture_message(
-            f"Tentative de connexion {status} pour {email}",
-            level=level
-        )
-
-    def shutdown(self):
-        """Fermeture propre de Sentry"""
-        if self.is_initialized:
-            try:
-                sentry_sdk.flush(timeout=2)  # Attendre max 2 secondes pour l'envoi
-                self.is_initialized = False
-            except Exception:
-                pass  # Ignorer les erreurs de fermeture
+            sentry_sdk.capture_message(
+                f"Connexion {status}: {email}",
+                level=level
+            )
 
     def force_flush(self):
         """Forcer l'envoi immédiat des données vers Sentry"""
         if self.is_initialized:
             try:
-                sentry_sdk.flush(timeout=3)  # Plus de temps pour un flush forcé
+                sentry_sdk.flush(timeout=5)
             except Exception:
                 pass
