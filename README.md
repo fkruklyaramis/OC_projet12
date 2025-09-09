@@ -1,22 +1,94 @@
-# Epic Events CRM
+# Epic Events CRM - Système de Gestion d'Événements
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-green.svg)
 ![Tests](https://img.shields.io/badge/Tests-79%20passed-brightgreen.svg)
 ![Coverage](https://img.shields.io/badge/Coverage-67%25-orange.svg)
+![Sentry](https://img.shields.io/badge/Monitoring-Sentry-purple.svg)
 
-Application de gestion de la relation client (CRM) pour Epic Events, une entreprise d'organisation d'événements. Ce système permet de gérer l'ensemble du cycle de vie des clients, contrats et événements avec un système de permissions robuste basé sur les départements.
+## 📖 Description du Projet
+
+Epic Events CRM est une application complète de gestion de la relation client (CRM) spécialement conçue pour une entreprise d'organisation d'événements. Le système permet de gérer l'ensemble du cycle de vie commercial : clients, contrats, événements, avec un système de permissions sophistiqué basé sur les départements de l'entreprise.
+
+### 🎯 Objectifs Business
+
+- **Gestion centralisée** : Tous les clients, contrats et événements dans un seul système
+- **Contrôle d'accès** : Permissions granulaires selon le département (Commercial, Support, Gestion)
+- **Traçabilité complète** : Logging de toutes les actions critiques avec Sentry
+- **Sécurité renforcée** : Authentification JWT et mots de passe chiffrés
+- **Interface intuitive** : CLI avec menus guidés et validation des données
+
+### 🏢 Départements et Responsabilités
+
+#### 🛍️ **Département Commercial**
+- Création et gestion des clients
+- Création des contrats pour leurs clients
+- Mise à jour des informations clients
+
+#### 🎪 **Département Support** 
+- Gestion des événements assignés
+- Mise à jour des détails d'événements
+- Support technique pendant les événements
+
+#### ⚙️ **Département Gestion**
+- Administration complète du système
+- Gestion des utilisateurs (création, modification, suppression)
+- Signature des contrats
+- Attribution des événements aux équipes support
+- Accès en lecture à toutes les données
 
 ## 📋 Table des matières
 
-- [Installation](#-installation)
+- [Architecture et Conception](#-architecture-et-conception)
+- [Installation et Configuration](#-installation-et-configuration)
 - [Schéma de la base de données](#-schéma-de-la-base-de-données)
-- [Architecture MVC](#-architecture-mvc)
-- [Présentation de l'application](#-présentation-de-lapplication)
-- [Tests](#-tests)
+- [Utilisation de l'application](#-utilisation-de-lapplication)
+- [Tests et Qualité](#-tests-et-qualité)
 - [Monitoring avec Sentry](#-monitoring-avec-sentry)
+- [Structure du Code](#-structure-du-code)
 
-## 🚀 Installation
+## 🏗️ Architecture et Conception
+
+### Pattern MVC (Model-View-Controller)
+
+```
+📁 src/
+├── 📁 models/          # Modèles de données (SQLAlchemy ORM)
+│   ├── user.py         # Modèle utilisateur avec départements
+│   ├── client.py       # Modèle client
+│   ├── contract.py     # Modèle contrat avec statuts
+│   └── event.py        # Modèle événement
+├── 📁 views/           # Interface utilisateur (CLI)
+│   ├── auth_view.py    # Interface d'authentification
+│   ├── user_view.py    # Interface gestion utilisateurs
+│   ├── client_view.py  # Interface gestion clients
+│   ├── contract_view.py # Interface gestion contrats
+│   └── event_view.py   # Interface gestion événements
+├── 📁 controllers/     # Logique métier
+│   ├── base_controller.py    # Contrôleur de base avec permissions
+│   ├── user_controller.py    # Logique utilisateurs
+│   ├── client_controller.py  # Logique clients
+│   ├── contract_controller.py # Logique contrats
+│   └── event_controller.py   # Logique événements
+├── 📁 services/        # Services transversaux
+│   ├── auth_service.py       # Service d'authentification JWT
+│   └── logging_service.py    # Service de logging Sentry
+└── 📁 utils/           # Utilitaires
+    ├── auth_utils.py   # Gestion permissions et autorisations
+    ├── jwt_utils.py    # Gestion tokens JWT
+    ├── hash_utils.py   # Chiffrement mots de passe
+    └── validators.py   # Validation des données
+```
+
+### 🔒 Système de Sécurité
+
+1. **Authentification JWT** : Tokens sécurisés avec expiration
+2. **Chiffrement bcrypt** : Mots de passe jamais stockés en clair
+3. **Contrôle d'accès basé sur les rôles** : Permissions par département
+4. **Validation des données** : Sanitisation et vérification des entrées
+5. **Logging sécurisé** : Traçabilité avec Sentry (sans données sensibles)
+
+## 🚀 Installation et Configuration
 
 ### Prérequis
 
