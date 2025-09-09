@@ -1,4 +1,41 @@
 
+"""
+Vue d'authentification pour Epic Events CRM
+
+Ce module fournit l'interface utilisateur pour toutes les opérations
+d'authentification : connexion, déconnexion, affichage du statut utilisateur
+et gestion des sessions avec une présentation visuelle attractive.
+
+Fonctionnalités d'authentification:
+    - Interface de connexion avec logo Epic Events
+    - Gestion des sessions persistantes via JWT
+    - Affichage du statut d'authentification
+    - Déconnexion sécurisée avec nettoyage
+    - Messages d'erreur contextuels et guidage utilisateur
+
+Interface utilisateur:
+    - Logo ASCII Epic Events pour branding
+    - Messages colorés selon le contexte (succès, erreur, warning)
+    - Prompts sécurisés pour mots de passe (masqués)
+    - Confirmation visuelle des actions d'authentification
+    - Navigation intuitive avec feedback immédiat
+
+Sécurité:
+    - Masquage automatique des mots de passe
+    - Validation des sessions avant actions
+    - Nettoyage sécurisé lors de la déconnexion
+    - Messages d'erreur sans fuite d'information
+    - Protection contre tentatives multiples
+
+Gestion des sessions:
+    - Détection automatique de sessions existantes
+    - Affichage des informations utilisateur connecté
+    - Gestion gracieuse des tokens expirés
+    - Persistance entre redémarrages d'application
+
+Fichier: src/views/auth_view.py
+"""
+
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -10,18 +47,61 @@ from .base_view import BaseView
 
 
 class AuthView(BaseView):
-    """Vue pour l'authentification avec interface Rich"""
+    """
+    Vue spécialisée pour les opérations d'authentification et de session.
+
+    Cette classe hérite de BaseView et ajoute les fonctionnalités spécifiques
+    à l'authentification avec une présentation visuelle cohérente et sécurisée.
+
+    Responsabilités:
+        - Interface de connexion/déconnexion utilisateur
+        - Affichage du logo et branding Epic Events
+        - Gestion des messages d'authentification
+        - Validation des sessions et gestion des erreurs
+        - Feedback utilisateur pour opérations d'auth
+
+    Interface visuelle:
+        - Logo ASCII artistique pour identité visuelle
+        - Panels stylés pour encadrer les sections importantes
+        - Messages colorés selon gravité et contexte
+        - Tables pour affichage d'informations utilisateur
+
+    Sécurité:
+        - Validation systématique des entrées utilisateur
+        - Masquage des mots de passe dans l'interface
+        - Gestion sécurisée des erreurs d'authentification
+        - Nettoyage automatique des sessions expirées
+    """
 
     def __init__(self):
+        """
+        Initialiser la vue d'authentification.
+
+        Hérite de BaseView pour accès aux services partagés
+        (base de données, console Rich, service d'authentification).
+        """
         super().__init__()
         # AuthView utilise directement le service d'auth de BaseView
 
     def _display_welcome_logo(self):
-        """Afficher le logo d'accueil Epic Events"""
+        """
+        Afficher le logo d'accueil Epic Events avec branding complet.
+
+        Cette méthode présente l'identité visuelle de l'application avec
+        un logo ASCII artistique et les textes de titre/sous-titre.
+
+        Éléments visuels:
+            - Logo ASCII Epic Events en art textuel
+            - Titre principal avec style cyan gras
+            - Sous-titre descriptif en blanc
+            - Panel encadré avec bordure double
+            - Style général cyan pour cohérence de marque
+        """
         title_text = Text()
         title_text.append(AUTH_MESSAGES["app_title"], style="bold cyan")
         title_text.append(AUTH_MESSAGES["app_subtitle"], style="white")
 
+        # Logo ASCII artistique Epic Events
         logo = """
     ███████╗██████╗ ██╗ ██████╗    ███████╗██╗   ██╗███████╗███╗   ██╗████████╗███████╗
     ██╔════╝██╔══██╗██║██╔════╝    ██╔════╝██║   ██║██╔════╝████╗  ██║╚══██╔══╝██╔════╝
@@ -39,10 +119,32 @@ class AuthView(BaseView):
         ))
 
     def login_command(self, email: str = None):
-        """Commande de connexion avec interface améliorée"""
+        """
+        Interface de connexion utilisateur avec gestion complète des cas.
+
+        Cette méthode gère le processus complet de connexion avec validation,
+        feedback utilisateur et gestion des sessions existantes.
+
+        Args:
+            email: Email pré-rempli (optionnel, pour réutilisation)
+
+        Fonctionnalités:
+            - Vérification de session existante
+            - Saisie sécurisée email/mot de passe
+            - Validation et authentification
+            - Gestion des erreurs avec messages contextuels
+            - Confirmation visuelle de connexion réussie
+
+        Sécurité:
+            - Masquage automatique du mot de passe
+            - Validation des entrées utilisateur
+            - Gestion des tentatives d'authentification échouées
+            - Protection contre bruteforce via feedback
+        """
         try:
             self.display_header(AUTH_MESSAGES["login_header"])
 
+            # Vérification session existante
             if self.auth_service.is_authenticated():
 
                 current_user = self.auth_service.get_current_user()

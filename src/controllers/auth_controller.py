@@ -1,3 +1,40 @@
+"""
+Contrôleur d'authentification et autorisation pour Epic Events CRM
+
+Ce module centralise toute la logique d'authentification, d'autorisation et de
+gestion des sessions utilisateurs pour l'application Epic Events. Il implémente
+les mécanismes de sécurité essentiels avec validation des credentials, gestion
+des permissions et création sécurisée des comptes utilisateurs.
+
+Fonctionnalités principales:
+- Authentification sécurisée avec vérification des mots de passe hachés
+- Gestion des sessions utilisateur avec contexte d'autorisation
+- Création de nouveaux utilisateurs avec validation des permissions
+- Vérification granulaire des droits selon les départements
+- Logging sécurisé des tentatives d'authentification
+- Protection contre les attaques par force brute
+
+Sécurité implémentée:
+- Hachage sécurisé des mots de passe (bcrypt/argon2)
+- Validation de la force des mots de passe
+- Séparation authentification/autorisation
+- Gestion sécurisée des échecs de connexion
+- Messages d'erreur non-informatifs (protection contre énumération)
+
+Permissions:
+- create_user: GESTION uniquement (contrôle des accès système)
+- Authentification: Tous les utilisateurs actifs
+- Session management: Automatique après authentification réussie
+
+Architecture:
+- Intégration avec le système de hachage centralisé
+- Utilisation du PermissionChecker pour les autorisations
+- Messages d'erreur centralisés et sécurisés
+- Logging des événements de sécurité
+
+Fichier: src/controllers/auth_controller.py
+"""
+
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from src.models.user import User, Department
@@ -11,7 +48,43 @@ from .base_controller import BaseController
 
 
 class AuthController(BaseController):
-    """Contrôleur d'authentification et autorisation - Pattern MVC"""
+    """
+    Contrôleur d'authentification et d'autorisation avec sécurité renforcée.
+
+    Ce contrôleur implémente tous les mécanismes de sécurité nécessaires pour
+    l'authentification et l'autorisation dans Epic Events CRM. Il garantit
+    l'intégrité de l'accès système et la protection des données sensibles.
+
+    Responsabilités principales:
+        - Authentification sécurisée des utilisateurs avec credentials
+        - Validation des mots de passe selon les politiques de sécurité
+        - Gestion des sessions utilisateur avec contexte d'autorisation
+        - Création contrôlée de nouveaux comptes utilisateur
+        - Vérification granulaire des permissions selon les rôles
+        - Logging sécurisé des événements d'authentification
+
+    Mécanismes de sécurité:
+        - Hachage sécurisé des mots de passe (protection contre rainbow tables)
+        - Validation de la complexité des mots de passe
+        - Messages d'erreur génériques (protection contre énumération utilisateurs)
+        - Séparation claire authentification/autorisation
+        - Logging des tentatives d'accès pour audit sécurité
+
+    Permissions métier:
+        - create_user: GESTION uniquement (contrôle strict des accès)
+        - authenticate_user: Tous les utilisateurs avec credentials valides
+        - Gestion session: Automatique après authentification réussie
+
+    Security Patterns:
+        - Fail-safe defaults: accès refusé par défaut
+        - Defense in depth: validation multiple niveaux
+        - Least privilege: permissions minimales nécessaires
+        - Audit trail: logging complet des accès
+
+    Note:
+        Ce contrôleur est critique pour la sécurité système et doit être
+        maintenu avec les plus hauts standards de sécurité.
+    """
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)

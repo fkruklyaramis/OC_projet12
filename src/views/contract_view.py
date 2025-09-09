@@ -1,3 +1,37 @@
+"""
+Vue de gestion des contrats pour Epic Events CRM
+
+Ce module fournit l'interface utilisateur pour la gestion complète des contrats
+commerciaux avec workflow de signature, suivi financier et respect des
+permissions départementales.
+
+Fonctionnalités contractuelles:
+    - Création de contrats avec validation financière
+    - Suivi du processus de signature
+    - Gestion des montants et paiements
+    - Consultation et recherche de contrats
+    - Workflow d'approbation par statut
+
+Gestion financière:
+    - Validation des montants avec contraintes métier
+    - Suivi des paiements et soldes restants
+    - Cohérence entre montant total et montant dû
+    - Contrôles de saisie pour éviter erreurs
+
+Interface de suivi:
+    - Tables avec statuts colorés selon état
+    - Affichage des informations financières
+    - Recherche par client, commercial ou statut
+    - Historique des modifications de contrat
+
+Permissions par département:
+    - COMMERCIAL: Gestion de ses propres contrats
+    - GESTION: Administration complète + signatures
+    - SUPPORT: Lecture pour contexte événements
+
+Fichier: src/views/contract_view.py
+"""
+
 from typing import List
 from src.controllers.contract_controller import ContractController
 from src.models.contract import Contract, ContractStatus
@@ -7,14 +41,62 @@ from .base_view import BaseView
 
 
 class ContractView(BaseView):
-    """Vue pour la gestion des contrats - Pattern MVC"""
+    """
+    Vue spécialisée pour la gestion des contrats commerciaux.
+
+    Cette classe fournit une interface complète pour le cycle de vie
+    des contrats depuis la création jusqu'à la signature, avec
+    gestion financière et workflow d'approbation.
+
+    Responsabilités contractuelles:
+        - Interface de création avec validation financière
+        - Suivi des étapes de signature et approbation
+        - Affichage et recherche dans le portefeuille
+        - Gestion des modifications et mises à jour
+        - Contrôles de cohérence financière
+
+    Workflow de validation:
+        - Brouillon: Création et modifications libres
+        - En attente: Soumission pour approbation
+        - Signé: Contrat finalisé et exécutoire
+        - Annulé: Contrat invalidé avec raison
+
+    Interface financière:
+        - Saisie sécurisée des montants
+        - Validation des calculs et cohérence
+        - Affichage formaté des valeurs monétaires
+        - Suivi des paiements et encours
+    """
 
     def __init__(self):
+        """
+        Initialiser la vue de gestion des contrats.
+
+        Configure le contrôleur contrat avec session DB
+        et permissions utilisateur appropriées.
+        """
         super().__init__()
         self.contract_controller = self.setup_controller(ContractController)
 
     def list_all_contracts_command(self):
-        """Lister tous les contrats (gestion seulement)"""
+        """
+        Afficher la liste complète des contrats (administration).
+
+        Cette méthode présente tous les contrats du système avec
+        informations détaillées et navigation par statut.
+
+        Restrictions d'accès:
+            - Réservé au département GESTION
+            - Authentification obligatoire
+            - Permissions administratives requises
+
+        Affichage:
+            - Table formatée avec colonnes métier
+            - Statuts colorés selon état du contrat
+            - Informations client et commercial
+            - Montants financiers avec formatage
+            - Dates de création et signature
+        """
         try:
             current_user = self.auth_service.require_authentication()
             self.contract_controller.set_current_user(current_user)

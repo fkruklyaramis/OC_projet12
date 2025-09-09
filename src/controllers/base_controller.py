@@ -1,3 +1,34 @@
+"""
+Module BaseController pour Epic Events CRM
+
+Ce module implémente le contrôleur de base de l'architecture MVC du système Epic Events.
+Il fournit une classe abstraite qui centralise la gestion des permissions, l'authentification,
+les validations de données et les opérations de base de données communes à tous les contrôleurs
+métier du système.
+
+Le BaseController constitue le fondement architectural qui assure la cohérence, la sécurité
+et la maintenabilité de l'ensemble de l'application. Il encapsule les patterns de conception
+Observer et Template Method pour la gestion d'état et les opérations CRUD.
+
+Architecture:
+    - Gestion centralisée de l'authentification et des sessions utilisateurs
+    - Système de permissions basé sur les rôles (RBAC - Role-Based Access Control)
+    - Validation de données avec gestion d'erreurs typées
+    - Transactions de base de données sécurisées avec rollback automatique
+    - Filtrage de requêtes selon les privilèges utilisateur
+    - Méthodes utilitaires pour les opérations CRUD communes
+
+Dependencies:
+    - SQLAlchemy: ORM pour les opérations de base de données
+    - src.models.user: Modèles User et Department
+    - src.utils.auth_utils: Utilitaires d'authentification et autorisation
+    - src.utils.validators: Validateurs de données métier
+
+Author: Étudiant OpenClassrooms
+Date: 2024
+Version: 1.0.0
+"""
+
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -7,7 +38,53 @@ from src.utils.validators import DataValidator, ValidationError
 
 
 class BaseController:
-    """Contrôleur de base avec gestion des permissions et transactions"""
+    """
+    Contrôleur de base pour l'architecture MVC d'Epic Events.
+
+    Cette classe abstraite fournit les fonctionnalités communes à tous les contrôleurs
+    métier du système CRM Epic Events. Elle centralise la gestion de l'authentification,
+    des permissions, des validations et des transactions de base de données.
+
+    Le BaseController implémente le pattern Template Method pour les opérations CRUD
+    et utilise le principe d'inversion de dépendance (DIP) pour découpler les couches
+    de l'application.
+
+    Responsabilités principales:
+        - Gestion de l'état de session utilisateur avec contrôle d'accès
+        - Validation des permissions basées sur les rôles métier
+        - Coordination des transactions de base de données avec gestion d'erreurs
+        - Validation de données avec règles métier centralisées
+        - Filtrage automatique des requêtes selon les privilèges utilisateur
+        - Méthodes utilitaires pour les opérations courantes (CRUD, recherche)
+
+    Attributes:
+        db (Session): Session SQLAlchemy pour les opérations de base de données
+        current_user (Optional[User]): Utilisateur authentifié actuellement connecté
+        permission_checker (PermissionChecker): Service de vérification des permissions
+        validator (DataValidator): Service de validation des données métier
+
+    Design Patterns:
+        - Template Method: Méthodes require_*_access() définissent la structure commune
+        - Observer: Notification des erreurs via le système de logging centralisé
+        - Strategy: Validation polymorphe selon le type de ressource
+
+    Sécurité:
+        - Toutes les opérations nécessitent une authentification préalable
+        - Contrôle d'accès granulaire par rôle et propriété des ressources
+        - Validation stricte des données avec échappement automatique
+        - Transactions atomiques avec rollback en cas d'erreur
+
+    Usage:
+        Cette classe est héritée par tous les contrôleurs métier :
+        - ClientController : Gestion des prospects et clients
+        - ContractController : Gestion des contrats commerciaux
+        - EventController : Gestion des événements et support
+        - UserController : Administration des utilisateurs
+
+    Note:
+        Cette classe ne doit jamais être instanciée directement. Elle sert uniquement
+        de classe parent pour les contrôleurs métier spécialisés.
+    """
 
     def __init__(self, db_session: Session):
         self.db = db_session

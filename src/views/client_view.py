@@ -1,3 +1,39 @@
+"""
+Vue de gestion des clients pour Epic Events CRM
+
+Ce module fournit l'interface utilisateur complète pour la gestion des clients
+avec fonctionnalités CRUD, recherche avancée, affichage tabulaire et respect
+des permissions par département.
+
+Fonctionnalités principales:
+    - Création de clients avec validation complète
+    - Consultation et recherche de clients
+    - Modification des informations clients
+    - Affichage tabulaire avec Rich
+    - Gestion des permissions par département
+
+Interface utilisateur:
+    - Formulaires interactifs pour saisie de données
+    - Tables stylées pour affichage des résultats
+    - Messages de feedback contextuels
+    - Navigation intuitive avec prompts clairs
+    - Validation en temps réel des entrées
+
+Gestion des permissions:
+    - COMMERCIAL: Accès à ses propres clients
+    - GESTION: Administration complète des clients
+    - SUPPORT: Lecture seule pour assistance technique
+    - Validation automatique des droits d'accès
+
+Architecture de données:
+    - Intégration avec ClientController pour logique métier
+    - Validation via DataValidator pour cohérence
+    - Messages localisés pour feedback utilisateur
+    - Gestion d'erreurs avec affichage approprié
+
+Fichier: src/views/client_view.py
+"""
+
 from typing import Optional
 from src.controllers.client_controller import ClientController
 from src.models.client import Client
@@ -12,14 +48,65 @@ from .base_view import BaseView
 
 
 class ClientView(BaseView):
-    """Vue pour la gestion des clients avec interface Rich"""
+    """
+    Vue spécialisée pour la gestion des clients Epic Events.
+
+    Cette classe fournit une interface utilisateur complète pour toutes
+    les opérations liées aux clients, avec respect des permissions
+    et validation des données.
+
+    Responsabilités:
+        - Interface de création/modification de clients
+        - Affichage et recherche dans la base clients
+        - Gestion des permissions par département
+        - Validation des données saisies
+        - Feedback utilisateur approprié selon contexte
+
+    Permissions par département:
+        - COMMERCIAL: CRUD sur ses propres clients
+        - GESTION: Administration complète tous clients
+        - SUPPORT: Lecture seule pour assistance
+
+    Interface Rich:
+        - Tables formatées pour listes de clients
+        - Formulaires interactifs de saisie
+        - Messages colorés selon gravité
+        - Panels pour informations détaillées
+    """
 
     def __init__(self):
+        """
+        Initialiser la vue clients avec contrôleur associé.
+
+        Configure automatiquement le contrôleur client avec
+        la session de base de données et les permissions utilisateur.
+        """
         super().__init__()
         self.client_controller = self.setup_controller(ClientController)
 
     def create_client_command(self, commercial_id: Optional[int] = None):
-        """Créer un nouveau client"""
+        """
+        Interface de création d'un nouveau client.
+
+        Cette méthode gère le processus complet de création d'un client
+        avec validation des données et gestion des permissions.
+
+        Args:
+            commercial_id: ID du commercial responsable (optionnel)
+
+        Processus:
+            1. Vérification authentification et permissions
+            2. Collecte des informations client via prompts
+            3. Détermination du commercial responsable
+            4. Validation et création via contrôleur
+            5. Feedback de confirmation ou d'erreur
+
+        Validation:
+            - Format email selon RFC standards
+            - Numéro de téléphone français
+            - Nom d'entreprise non vide
+            - Permissions utilisateur pour création
+        """
         try:
             current_user = self.auth_service.require_authentication()
             self.client_controller.set_current_user(current_user)

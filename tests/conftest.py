@@ -14,6 +14,9 @@ from sqlalchemy.orm import sessionmaker
 from src.database.connection import Base
 from src.models.user import User, Department
 from src.models.client import Client
+# Import nécessaires pour enregistrer tous les modèles SQLAlchemy
+from src.models.contract import Contract, ContractStatus  # noqa: F401
+from src.models.event import Event  # noqa: F401
 
 
 @pytest.fixture(scope="function")

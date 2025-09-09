@@ -1,3 +1,40 @@
+"""
+Vue de gestion des utilisateurs pour Epic Events CRM
+
+Ce module fournit l'interface d'administration des collaborateurs Epic Events
+avec gestion des permissions, validation des données et interface Rich
+pour les opérations CRUD réservées au département GESTION.
+
+Fonctionnalités administratives:
+    - Création de comptes collaborateurs
+    - Consultation de l'annuaire interne
+    - Modification des profils utilisateurs
+    - Suppression de comptes (avec sécurité)
+    - Recherche avancée dans l'équipe
+
+Sécurité et permissions:
+    - Accès réservé au département GESTION uniquement
+    - Validation stricte des données utilisateur
+    - Génération automatique de numéros d'employé
+    - Politique de sécurité des mots de passe appliquée
+    - Audit des modifications de comptes
+
+Interface d'administration:
+    - Formulaires de création/modification sécurisés
+    - Affichage tabulaire des collaborateurs
+    - Filtrage par département et statut
+    - Confirmations pour actions critiques
+    - Feedback détaillé sur opérations
+
+Gestion des données RH:
+    - Informations personnelles et professionnelles
+    - Assignation départementale avec validation
+    - Historique des modifications de comptes
+    - Intégration avec système de permissions
+
+Fichier: src/views/user_view.py
+"""
+
 from typing import Optional
 from src.controllers.user_controller import UserController
 from src.models.user import User
@@ -8,14 +45,71 @@ from .base_view import BaseView
 
 
 class UserView(BaseView):
-    """Vue pour la gestion des utilisateurs avec interface Rich"""
+    """
+    Vue d'administration des utilisateurs Epic Events.
+
+    Cette classe fournit une interface complète pour la gestion des comptes
+    collaborateurs, réservée au département GESTION avec validation stricte
+    des permissions et des données.
+
+    Responsabilités administratives:
+        - Création de comptes avec données complètes
+        - Consultation et recherche dans l'annuaire
+        - Modification sécurisée des profils
+        - Suppression contrôlée de comptes
+        - Gestion des permissions par département
+
+    Sécurité RH:
+        - Accès limité au département GESTION
+        - Validation politique mots de passe
+        - Génération sécurisée numéros employé
+        - Audit des opérations sensibles
+        - Protection données personnelles
+
+    Interface administrative:
+        - Formulaires structurés pour saisie complète
+        - Tables formatées pour consultation rapide
+        - Messages de confirmation pour actions critiques
+        - Validation temps réel des entrées
+        - Navigation intuitive dans l'annuaire
+    """
 
     def __init__(self):
+        """
+        Initialiser la vue d'administration utilisateurs.
+
+        Configure le contrôleur utilisateur avec session DB
+        et permissions administratives requises.
+        """
         super().__init__()
         self.user_controller = self.setup_controller(UserController)
 
     def create_user_command(self):
-        """Créer un nouveau collaborateur (gestion uniquement)"""
+        """
+        Interface de création d'un nouveau collaborateur.
+
+        Cette méthode gère le processus complet de création d'un compte
+        collaborateur avec validation des permissions GESTION et des données.
+
+        Restrictions d'accès:
+            - Réservé au département GESTION uniquement
+            - Authentification requise avant opération
+            - Validation automatique des permissions
+
+        Processus de création:
+            1. Vérification permissions administratives
+            2. Collecte informations collaborateur via prompts
+            3. Validation données selon politique entreprise
+            4. Génération automatique numéro employé
+            5. Création compte avec feedback confirmation
+
+        Données collectées:
+            - Email professionnel (unique et validé)
+            - Nom complet (prénom + nom)
+            - Numéro téléphone (format français)
+            - Département d'affectation (enum validé)
+            - Mot de passe sécurisé (politique appliquée)
+        """
         try:
             current_user = self.auth_service.require_authentication()
             self.user_controller.set_current_user(current_user)

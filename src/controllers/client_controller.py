@@ -1,3 +1,39 @@
+"""
+Contrôleur de gestion des clients pour Epic Events CRM
+
+Ce module centralise la logique métier pour toutes les opérations
+liées aux clients de l'entreprise. Il gère la création, modification,
+consultation et suppression des comptes clients avec un système de
+permissions spécialisé selon les départements.
+
+Fonctionnalités principales:
+- Création de nouveaux clients avec validation email unique
+- Modification des informations client avec traçabilité
+- Consultation des clients avec filtrage par commercial responsable
+- Suppression contrôlée avec vérification des dépendances
+- Gestion des liens avec les commerciaux responsables
+- Validation complète des données (email, téléphone, entreprise)
+
+Permissions métier:
+- COMMERCIAL: Peut créer et modifier ses propres clients uniquement
+- GESTION: Accès complet (CRUD sur tous les clients)
+- SUPPORT: Lecture uniquement des clients avec événements assignés
+
+Spécificités clients:
+- Email unique obligatoire dans le système
+- Chaque client a un commercial responsable attitré
+- Lien avec les contrats et événements
+- Historique de création et modification tracé
+
+Architecture:
+- Hérite de BaseController pour les fonctionnalités communes
+- Intègre la validation de données spécialisée clients
+- Gestion automatique des transactions avec rollback
+- Logging automatique des opérations critiques
+
+Fichier: src/controllers/client_controller.py
+"""
+
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from src.models.client import Client
@@ -8,7 +44,36 @@ from .base_controller import BaseController
 
 
 class ClientController(BaseController):
-    """Controleur pour la gestion des clients - Pattern MVC"""
+    """
+    Contrôleur spécialisé pour la gestion des clients avec permissions métier
+
+    Ce contrôleur implémente la logique métier spécifique aux clients
+    de l'application Epic Events CRM. Il assure la cohérence des données
+    clients et respecte les règles métier selon les départements.
+
+    Responsabilités principales:
+    - Validation des données clients (email unique, format téléphone)
+    - Gestion des liens clients-commerciaux avec vérifications
+    - Application des permissions selon le département utilisateur
+    - Traçabilité des opérations pour audit commercial
+    - Vérification des dépendances avant suppression
+
+    Règles métier spécifiques:
+    - Les commerciaux ne peuvent gérer que leurs propres clients
+    - L'email client doit être unique dans le système
+    - Chaque client doit avoir un commercial responsable
+    - Les suppressions nécessitent vérification des contrats/événements
+
+    Permissions implémentées:
+    - create_client: COMMERCIAL (ses clients), GESTION (tous)
+    - read_client: COMMERCIAL (ses clients), SUPPORT (clients avec événements), GESTION (tous)
+    - update_client: COMMERCIAL (ses clients), GESTION (tous)
+    - delete_client: GESTION uniquement
+
+    Note:
+        Utilise les validateurs spécialisés pour les données métier clients
+        et intègre la gestion des erreurs avec rollback automatique.
+    """
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)

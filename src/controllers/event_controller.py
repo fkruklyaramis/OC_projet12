@@ -1,3 +1,41 @@
+"""
+Contrôleur de gestion des événements pour Epic Events CRM
+
+Ce module implémente la logique métier pour toutes les opérations liées aux
+événements organisés par l'entreprise. Il gère la création, modification,
+consultation et suppression des événements avec un système de permissions
+spécialisé et une validation stricte des contraintes métier.
+
+Fonctionnalités principales:
+- Création d'événements associés aux contrats signés uniquement
+- Attribution et modification des contacts support responsables
+- Validation des dates, lieux et nombre de participants
+- Consultation des événements avec filtrage par support
+- Gestion du cycle de vie des événements (planification → exécution → clôture)
+- Logging automatique pour traçabilité opérationnelle
+
+Règles métier spécifiques:
+- Seuls les contrats signés peuvent avoir des événements
+- Chaque événement peut avoir un support assigné (optionnel)
+- Les dates doivent être cohérentes (fin après début)
+- Le commercial du contrat peut créer l'événement
+- Le support assigné peut modifier son événement
+- La gestion a accès complet à tous les événements
+
+Permissions:
+- GESTION: Accès complet (CRUD sur tous les événements)
+- COMMERCIAL: Création pour ses contrats, lecture de ses événements
+- SUPPORT: Modification des événements qui lui sont assignés
+
+Architecture:
+- Intégration avec le système de contrats pour validation
+- Gestion des relations client-contrat-événement
+- Validation avancée des données temporelles et logistiques
+- Système de traçabilité pour audit et suivi commercial
+
+Fichier: src/controllers/event_controller.py
+"""
+
 from typing import List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session, joinedload
@@ -11,7 +49,45 @@ from .base_controller import BaseController
 
 
 class EventController(BaseController):
-    """Controleur pour la gestion des evenements - Pattern MVC"""
+    """
+    Contrôleur spécialisé pour la gestion des événements avec workflow métier.
+
+    Ce contrôleur implémente la logique métier complexe des événements dans
+    l'écosystème Epic Events CRM. Il coordonne les interactions entre clients,
+    contrats et événements tout en respectant les contraintes temporelles et
+    organisationnelles du métier événementiel.
+
+    Responsabilités principales:
+        - Validation de l'éligibilité des contrats pour création d'événements
+        - Gestion du cycle de vie complet des événements
+        - Attribution et suivi des contacts support responsables
+        - Validation des contraintes logistiques (dates, lieux, participants)
+        - Application des permissions selon les rôles métier
+        - Traçabilité complète pour audit et facturation
+
+    Règles métier implémentées:
+        - Événements créés uniquement sur contrats signés
+        - Attribution obligatoire ou optionnelle du support selon le contexte
+        - Validation temporelle stricte (cohérence des dates)
+        - Contrôle d'accès selon la propriété des contrats
+        - Gestion des modifications selon les responsabilités
+
+    Workflow typique:
+        1. Commercial crée l'événement pour son contrat signé
+        2. Gestion assigne un support contact si nécessaire
+        3. Support met à jour les détails et prépare l'événement
+        4. Suivi et clôture post-événement pour facturation
+
+    Permissions métier:
+        - create_event: GESTION uniquement (contrôle centralisé)
+        - read_event: COMMERCIAL (ses contrats), SUPPORT (ses événements), GESTION (tous)
+        - update_event: COMMERCIAL (ses contrats), SUPPORT (ses événements), GESTION (tous)
+        - delete_event: GESTION uniquement (cohérence contractuelle)
+
+    Note:
+        Les événements sont étroitement liés aux contrats signés et constituent
+        la finalité opérationnelle du processus commercial Epic Events.
+    """
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)

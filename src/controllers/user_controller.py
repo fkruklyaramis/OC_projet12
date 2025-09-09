@@ -1,3 +1,32 @@
+"""
+Contrôleur de gestion des utilisateurs pour Epic Events CRM
+
+Ce module contient la logique métier pour toutes les opérations liées aux
+utilisateurs (collaborateurs) de l'entreprise. Il gère la création, modification,
+consultation et suppression des comptes utilisateurs avec un système de
+permissions basé sur les départements.
+
+Fonctionnalités principales:
+- Création de nouveaux collaborateurs avec génération automatique du numéro employé
+- Modification des informations utilisateur avec traçabilité
+- Consultation des utilisateurs avec filtrage par département
+- Suppression sécurisée des comptes
+- Validation des mots de passe et données personnelles
+- Logging automatique de toutes les opérations critiques
+
+Permissions requises:
+- GESTION: Accès complet (CRUD sur tous les utilisateurs)
+- COMMERCIAL/SUPPORT: Lecture uniquement de leurs propres informations
+
+Architecture:
+- Hérite de BaseController pour les fonctionnalités communes
+- Intègre SentryLogger pour la traçabilité
+- Utilise les validateurs pour la sécurité des données
+- Gestion automatique des transactions avec rollback
+
+Fichier: src/controllers/user_controller.py
+"""
+
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -10,7 +39,37 @@ from .base_controller import BaseController
 
 
 class UserController(BaseController):
-    """Contrôleur pour la gestion des utilisateurs avec vérification des permissions"""
+    """
+    Contrôleur pour la gestion des utilisateurs avec vérification des permissions
+
+    Ce contrôleur centralise toute la logique métier liée aux utilisateurs
+    de l'application Epic Events CRM. Il assure la sécurité, la validation
+    et la traçabilité de toutes les opérations sur les comptes collaborateurs.
+
+    Responsabilités:
+    - Validation des données utilisateur (email, mot de passe, etc.)
+    - Génération automatique des numéros d'employé
+    - Gestion des permissions strictes (GESTION uniquement pour CRUD)
+    - Hachage sécurisé des mots de passe
+    - Traçabilité complète des opérations pour audit RH
+    - Vérification d'intégrité avant suppression
+
+    Permissions spécialisées:
+    - create_user: GESTION uniquement (contrôle des accès système)
+    - read_user: GESTION (tous), utilisateur (ses propres données)
+    - update_user: GESTION uniquement (modification profils)
+    - delete_user: GESTION uniquement (suppression comptes)
+
+    Sécurité renforcée:
+    - Validation force des mots de passe (8+ caractères, complexité)
+    - Email unique obligatoire dans le système
+    - Numéro employé généré automatiquement et unique
+    - Logging Sentry pour toutes les opérations critiques
+
+    Note:
+        Toutes les opérations CRUD nécessitent des permissions GESTION
+        sauf la consultation de ses propres données par l'utilisateur.
+    """
 
     def __init__(self, db_session: Session):
         super().__init__(db_session)

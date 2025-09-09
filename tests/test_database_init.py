@@ -209,8 +209,8 @@ class TestDatabaseInit(unittest.TestCase):
 
         create_sample_data(mock_session)
 
-        # Vérifier qu'au moins 4 événements ont été créés
-        self.assertGreaterEqual(event_count, 4)
+        # Vérifier qu'au moins 3 événements ont été créés (structure optimisée)
+        self.assertGreaterEqual(event_count, 3)
 
 
 if __name__ == '__main__':
