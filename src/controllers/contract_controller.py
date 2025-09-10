@@ -288,16 +288,14 @@ class ContractController(BaseController):
             # === LOGGING SPÉCIAL POUR SIGNATURES DE CONTRATS ===
             # Traçabilité obligatoire pour audit et conformité
             if 'status' in validated_data and is_being_signed:
-                print(f"🔥 DEBUG: Tentative log signature contrat {contract.id}")
                 print(f"    - Client: {getattr(contract.client, 'company_name', 'NON CHARGÉ')}")
                 print(f"    - Commercial: {getattr(self.current_user, 'full_name', 'NON DÉFINI')}")
                 try:
                     # Force le chargement des relations pour le logging
                     self.db.refresh(contract)
                     self.sentry_logger.log_contract_signature(contract, self.current_user)
-                    print("✅ DEBUG: Log signature envoyé avec succès !")
                 except Exception as e:
-                    print(f"❌ DEBUG: ERREUR lors du log: {e}")
+                    print(f"ERREUR lors du log: {e}")
                     import traceback
                     traceback.print_exc()
 
@@ -356,11 +354,6 @@ class ContractController(BaseController):
             joinedload(Contract.commercial_contact),
             joinedload(Contract.events)
         ).filter(Contract.id == contract_id).first()
-
-        if contract and not self._can_access_contract(contract):
-            raise AuthorizationError("Accès refusé à ce contrat")
-
-        return contract
 
         if contract and not self._can_access_contract(contract):
             raise AuthorizationError("Accès refusé à ce contrat")
