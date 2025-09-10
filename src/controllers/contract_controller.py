@@ -346,7 +346,36 @@ class ContractController(BaseController):
         ).all()
 
     def get_contract_by_id(self, contract_id: int) -> Optional[Contract]:
-        """Recuperer un contrat par son ID avec verification d'acces"""
+        """
+        Récupérer un contrat spécifique par son identifiant avec contrôle d'accès.
+
+        Cette méthode permet de récupérer un contrat unique en appliquant
+        automatiquement les règles de permissions selon le département utilisateur.
+
+        Contrôle d'accès par département:
+            - GESTION: Accès à tous les contrats système
+            - COMMERCIAL: Accès uniquement aux contrats de leurs clients
+            - SUPPORT: Accès aux contrats liés à leurs événements assignés
+
+        Relations chargées automatiquement:
+            - Client associé au contrat (informations entreprise)
+            - Commercial responsable (coordonnées et suivi)
+            - Événements liés (pour validation support)
+
+        Args:
+            contract_id (int): Identifiant unique du contrat à récupérer
+
+        Returns:
+            Optional[Contract]: Contrat trouvé avec relations ou None si inexistant/inaccessible
+
+        Raises:
+            AuthorizationError: Si l'utilisateur n'a pas accès à ce contrat spécifique
+
+        Exemple:
+            >>> contract = controller.get_contract_by_id(123)
+            >>> if contract:
+            ...     print(f"Contrat {contract.id} - Client: {contract.client.full_name}")
+        """
         self.require_read_access('contract')
 
         contract = self.db.query(Contract).options(
@@ -361,7 +390,36 @@ class ContractController(BaseController):
         return contract
 
     def get_my_contracts(self) -> List[Contract]:
-        """Recuperer les contrats assignes a l'utilisateur actuel"""
+        """
+        Récupérer les contrats assignés à l'utilisateur commercial connecté.
+
+        Cette méthode spécialisée permet aux commerciaux de consulter
+        uniquement les contrats dont ils sont responsables.
+
+        Restrictions d'accès:
+            - Réservé exclusivement au département COMMERCIAL
+            - Filtrage automatique par commercial_contact_id
+            - Authentification utilisateur obligatoire
+
+        Relations incluses:
+            - Client: Informations complètes de l'entreprise cliente
+            - Commercial: Données du responsable commercial (soi-même)
+            - Événements: Liste des événements liés aux contrats
+
+        Returns:
+            List[Contract]: Liste des contrats assignés au commercial connecté
+
+        Raises:
+            AuthorizationError: Si utilisateur non authentifié ou non-commercial
+
+        Usage typique:
+            Utilisé par l'interface commercial pour afficher le portefeuille
+            client et le suivi des affaires en cours.
+
+        Exemple:
+            >>> mes_contrats = controller.get_my_contracts()
+            >>> print(f"Je gère {len(mes_contrats)} contrats")
+        """
         if not self.current_user:
             raise AuthorizationError("Authentification requise")
 
@@ -433,7 +491,43 @@ class ContractController(BaseController):
         return contract
 
     def delete_contract(self, contract_id: int) -> bool:
-        """Supprimer un contrat"""
+        """
+        Supprimer définitivement un contrat du système (GESTION uniquement).
+
+        Cette méthode critique permet la suppression complète d'un contrat
+        avec vérifications de sécurité et contraintes d'intégrité.
+
+        Restrictions strictes:
+            - Réservé exclusivement au département GESTION
+            - Impossible si des événements sont associés au contrat
+            - Vérification existence obligatoire avant suppression
+            - Transaction sécurisée avec rollback automatique
+
+        Contraintes d'intégrité:
+            - Aucun événement ne doit être lié au contrat
+            - Vérification des dépendances avant suppression
+            - Préservation cohérence base de données
+
+        Args:
+            contract_id (int): Identifiant du contrat à supprimer
+
+        Returns:
+            bool: True si suppression réussie, False sinon
+
+        Raises:
+            ValidationError: Si contrat inexistant ou a des événements liés
+            AuthorizationError: Si utilisateur non autorisé (non-GESTION)
+            Exception: Si erreur technique lors de la suppression
+
+        Sécurité:
+            Opération irréversible nécessitant validation manuelle
+            et permissions administratives maximales.
+
+        Exemple:
+            >>> success = controller.delete_contract(123)
+            >>> if success:
+            ...     print("Contrat supprimé avec succès")
+        """
         contract = self.get_contract_by_id(contract_id)
         if not contract:
             raise ValidationError("Contrat non trouvé")
@@ -454,13 +548,45 @@ class ContractController(BaseController):
             self.db.rollback()
             raise Exception(f"Erreur lors de la suppression: {e}")
 
-        return self.db.query(Contract).options(
-            joinedload(Contract.client),
-            joinedload(Contract.commercial_contact)
-        ).filter(Contract.commercial_contact_id == self.current_user.id).all()
-
     def get_contracts_by_status(self, status: ContractStatus) -> List[Contract]:
-        """Recuperer les contrats par statut"""
+        """
+        Récupérer tous les contrats ayant un statut spécifique.
+
+        Cette méthode de filtrage permet de récupérer les contrats selon
+        leur statut avec application automatique des permissions utilisateur.
+
+        Filtrage par statut disponible:
+            - DRAFT: Contrats en brouillon (non signés)
+            - SIGNED: Contrats signés et validés
+            - CANCELLED: Contrats annulés ou résiliés
+
+        Permissions par département:
+            - GESTION: Accès à tous les contrats du statut demandé
+            - COMMERCIAL: Contrats du statut filtré par leur responsabilité
+            - SUPPORT: Contrats du statut avec événements assignés
+
+        Relations chargées:
+            - Client associé pour informations entreprise
+            - Commercial responsable pour suivi et contact
+
+        Args:
+            status (ContractStatus): Statut des contrats à récupérer
+
+        Returns:
+            List[Contract]: Liste des contrats correspondant au statut et permissions
+
+        Raises:
+            AuthorizationError: Si utilisateur sans permission read_contract
+
+        Usage typique:
+            - Suivi des contrats en attente de signature
+            - Reporting des contrats validés
+            - Gestion des contrats annulés
+
+        Exemple:
+            >>> drafts = controller.get_contracts_by_status(ContractStatus.DRAFT)
+            >>> print(f"{len(drafts)} contrats en attente de signature")
+        """
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
 
@@ -480,11 +606,67 @@ class ContractController(BaseController):
         return query.all()
 
     def get_unsigned_contracts(self) -> List[Contract]:
-        """Recuperer les contrats non signes"""
+        """
+        Récupérer tous les contrats non signés (statut DRAFT).
+
+        Méthode de convenance qui utilise get_contracts_by_status()
+        pour récupérer spécifiquement les contrats en attente de signature.
+
+        Cas d'usage principal:
+            - Vue managériale des contrats en attente
+            - Suivi commercial des affaires à finaliser
+            - Relances clients pour signature
+
+        Returns:
+            List[Contract]: Contrats avec statut DRAFT selon permissions utilisateur
+
+        Permissions:
+            Hérite des mêmes règles que get_contracts_by_status()
+
+        Exemple:
+            >>> unsigned = controller.get_unsigned_contracts()
+            >>> for contract in unsigned:
+            ...     print(f"Contrat {contract.id} - {contract.client.company_name}")
+        """
         return self.get_contracts_by_status(ContractStatus.DRAFT)
 
     def get_unpaid_contracts(self) -> List[Contract]:
-        """Recuperer les contrats avec des montants dus"""
+        """
+        Récupérer tous les contrats avec des montants encore dus.
+
+        Cette méthode spécialisée identifie les contrats nécessitant
+        un suivi de recouvrement ou de facturation.
+
+        Critère de sélection:
+            - amount_due > 0 (montant encore dû supérieur à zéro)
+            - Tous statuts confondus (DRAFT, SIGNED, CANCELLED)
+
+        Applications métier:
+            - Suivi commercial des paiements en attente
+            - Reporting financier des créances clients
+            - Relances de facturation et recouvrement
+            - Tableau de bord trésorerie
+
+        Permissions par département:
+            - GESTION: Tous les contrats impayés du système
+            - COMMERCIAL: Leurs contrats clients avec solde dû
+            - SUPPORT: Contrats impayés avec événements assignés
+
+        Relations incluses:
+            - Client: Pour coordonnées et relances
+            - Commercial: Pour suivi et responsabilité
+
+        Returns:
+            List[Contract]: Contrats avec montants dus selon permissions
+
+        Raises:
+            AuthorizationError: Si permission read_contract non accordée
+
+        Exemple:
+            >>> unpaid = controller.get_unpaid_contracts()
+            >>> total_due = sum(c.amount_due for c in unpaid)
+            >>> print(f"Créances totales: {total_due} EUR")
+        """
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
 
@@ -503,7 +685,54 @@ class ContractController(BaseController):
         return query.all()
 
     def search_contracts(self, **criteria) -> List[Contract]:
-        """Rechercher des contrats selon des criteres"""
+        """
+        Rechercher des contrats selon des critères multiples et flexibles.
+
+        Cette méthode avancée permet une recherche fine dans la base
+        de contrats avec combinaison de plusieurs critères de filtrage.
+
+        Critères de recherche disponibles:
+            - client_name: Recherche partielle dans le nom du client
+            - company_name: Recherche partielle dans le nom de l'entreprise
+            - status: Filtrage exact par statut de contrat
+            - Extensible pour d'autres critères futurs
+
+        Type de recherche:
+            - Recherche ILIKE (insensible à la casse)
+            - Correspondance partielle avec caractères génériques
+            - Combinaison AND de tous les critères fournis
+
+        Permissions appliquées automatiquement:
+            - GESTION: Recherche dans tous les contrats système
+            - COMMERCIAL: Recherche limitée à leurs contrats clients
+            - SUPPORT: Recherche dans contrats avec événements assignés
+
+        Args:
+            **criteria: Critères de recherche sous forme de mots-clés
+                - client_name (str): Nom ou partie du nom client
+                - company_name (str): Nom ou partie du nom entreprise
+                - status (ContractStatus): Statut exact à rechercher
+
+        Returns:
+            List[Contract]: Contrats correspondant aux critères et permissions
+
+        Raises:
+            AuthorizationError: Si permission read_contract non accordée
+
+        Relations incluses:
+            - Client pour informations de recherche et affichage
+            - Commercial pour contexte et responsabilité
+
+        Exemples:
+            >>> # Recherche par nom client
+            >>> results = controller.search_contracts(client_name="Dupont")
+
+            >>> # Recherche combinée
+            >>> results = controller.search_contracts(
+            ...     company_name="TechCorp",
+            ...     status=ContractStatus.SIGNED
+            ... )
+        """
         if not self.permission_checker.has_permission(self.current_user, 'read_contract'):
             raise AuthorizationError("Permission requise pour consulter les contrats")
 
@@ -538,7 +767,42 @@ class ContractController(BaseController):
         return query.all()
 
     def _can_access_contract(self, contract: Contract) -> bool:
-        """Verifier si l'utilisateur peut acceder a ce contrat"""
+        """
+        Vérifier si l'utilisateur connecté peut accéder à un contrat spécifique.
+
+        Cette méthode privée implémente la logique centrale de contrôle
+        d'accès aux contrats selon les règles métier departementales.
+
+        Règles d'accès par département:
+            - GESTION: Accès complet à tous les contrats (supervision)
+            - COMMERCIAL: Accès uniquement aux contrats de leurs clients
+            - SUPPORT: Accès aux contrats ayant des événements assignés
+
+        Logique de vérification:
+            1. Vérification département GESTION (accès total)
+            2. Vérification COMMERCIAL + propriété (commercial_contact_id)
+            3. Vérification SUPPORT + événements assignés
+            4. Refus par défaut pour autres cas
+
+        Args:
+            contract (Contract): Instance du contrat à vérifier
+
+        Returns:
+            bool: True si accès autorisé, False sinon
+
+        Note technique:
+            Utilise la relation contract.events pour vérifier les assignations
+            support sans requête DB supplémentaire grâce au eager loading.
+
+        Utilisation interne:
+            Appelée automatiquement par get_contract_by_id() pour
+            appliquer les restrictions d'accès avant retour des données.
+
+        Exemple logique:
+            >>> # GESTION: toujours True
+            >>> # COMMERCIAL: True si contract.commercial_contact_id == user.id
+            >>> # SUPPORT: True si au moins un event.support_contact_id == user.id
+        """
         if self.current_user.is_gestion:
             return True
 

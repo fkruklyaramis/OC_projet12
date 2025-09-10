@@ -76,7 +76,63 @@ class UserController(BaseController):
         self.sentry_logger = SentryLogger()
 
     def get_all_users(self, department: str = None) -> List[User]:
-        """Récupérer tous les utilisateurs (gestion uniquement)"""
+        """
+        Récupérer la liste de tous les utilisateurs avec filtrage optionnel par département.
+
+        Cette méthode administrative critique permet la consultation globale
+        de tous les collaborateurs de l'entreprise avec possibilité de
+        filtrer par département pour analyses organisationnelles.
+
+        Permissions requises:
+            - Département GESTION exclusivement
+            - Permission 'read_user' obligatoire
+            - Accès administrateur système uniquement
+
+        Filtrage intelligent:
+            - Sans département: Tous les utilisateurs du système
+            - Avec département: Filtrage sur department spécifique
+            - Validation enum Department pour sécurité
+            - Exclusion comptes désactivés selon configuration
+
+        Données exposées:
+            - Informations professionnelles complètes
+            - Métadonnées comptes (création, dernière connexion)
+            - Départements et permissions associées
+            - Statistiques activité utilisateur
+
+        Args:
+            department (str, optional): Filtrage par département ('commercial', 'support', 'gestion')
+
+        Returns:
+            List[User]: Liste utilisateurs selon critères avec métadonnées complètes
+
+        Raises:
+            AuthorizationError: Si permission read_user non accordée
+            ValidationError: Si département spécifié invalide
+            Exception: Si erreur technique consultation base
+
+        Cas d'usage administratifs:
+            - Audit global équipes
+            - Rapports RH et organisation
+            - Gestion permissions masse
+            - Analyses départementales
+            - Export organigrammes
+
+        Sécurité:
+            - Contrôle accès strict GESTION
+            - Validation enum departments
+            - Audit trail consultations
+            - Protection données personnelles
+
+        Exemple:
+            >>> # Tous les utilisateurs
+            >>> tous = controller.get_all_users()
+            >>> print(f"Total collaborateurs: {len(tous)}")
+            >>>
+            >>> # Filtrage par département
+            >>> commerciaux = controller.get_all_users("commercial")
+            >>> print(f"Équipe commerciale: {len(commerciaux)} personnes")
+        """
         if not self.permission_checker.has_permission(self.current_user, 'read_user'):
             raise AuthorizationError("Permission 'read_user' requise")
 
@@ -99,7 +155,75 @@ class UserController(BaseController):
         return self.db.query(User).filter(User.id == user_id).first()
 
     def create_user(self, email: str, password: str, full_name: str, department: str) -> User:
-        """Créer un nouvel utilisateur avec validation complète"""
+        """
+        Créer un nouveau compte utilisateur collaborateur avec validation complète.
+
+        Cette méthode privilégiée RH permet la création sécurisée de nouveaux
+        comptes collaborateurs avec génération automatique des identifiants
+        et validation stricte selon les politiques entreprise.
+
+        Permissions requises:
+            - Département GESTION exclusivement
+            - Permission 'create_user' obligatoire
+            - Validation hiérarchique pour création comptes
+
+        Validations automatiques:
+            - Email unique dans le système complet
+            - Politique mot de passe stricte (complexité, longueur)
+            - Nom complet format valide (pas de caractères spéciaux)
+            - Département valide selon enum autorisé
+            - Génération automatique numéro employé unique
+
+        Création sécurisée:
+            - Hachage irréversible mot de passe (jamais stocké clair)
+            - Numéro employé auto-généré et garanti unique
+            - Horodatage création pour audit
+            - Transaction atomique avec rollback automatique
+
+        Args:
+            email (str): Adresse email professionnelle unique
+            password (str): Mot de passe initial (sera haché)
+            full_name (str): Nom complet collaborateur
+            department (str): Département d'affectation ('commercial'/'support'/'gestion')
+
+        Returns:
+            User: Nouveau collaborateur créé avec credentials sécurisés
+
+        Raises:
+            AuthorizationError: Si permission create_user non accordée
+            ValidationError: Si données invalides ou email existant
+            IntegrityError: Si violation contraintes base (email unique)
+            Exception: Si erreur technique création
+
+        Processus création:
+            1. Validation stricte toutes données entrées
+            2. Vérification unicité email système
+            3. Hachage sécurisé mot de passe
+            4. Génération numéro employé unique
+            5. Création compte avec métadonnées
+            6. Commit transaction ou rollback si erreur
+
+        Sécurité renforcée:
+            - Validation multi-niveaux données
+            - Protection contre injections
+            - Audit trail création comptes
+            - Hachage cryptographique passwords
+
+        Traçabilité:
+            - Logging automatique Sentry
+            - Horodatage précis création
+            - Identité créateur tracée
+            - Historique complet modifications
+
+        Exemple:
+            >>> user = controller.create_user(
+            ...     "nouveau.commercial@epicevents.com",
+            ...     "MotDePasseSecurise123!",
+            ...     "Marie Dupont",
+            ...     "commercial"
+            ... )
+            >>> print(f"Collaborateur créé: {user.employee_number}")
+        """
         if not self.permission_checker.has_permission(self.current_user, 'create_user'):
             raise AuthorizationError("Seule la gestion peut créer des utilisateurs")
 

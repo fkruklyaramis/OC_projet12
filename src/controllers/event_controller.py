@@ -95,7 +95,86 @@ class EventController(BaseController):
     def create_event(self, contract_id: int, name: str, start_date: datetime,
                      end_date: datetime, location: str, attendees: int,
                      notes: str = None, support_contact_id: int = None) -> Event:
-        """Créer un nouvel événement avec validation"""
+        """
+        Créer un nouvel événement associé à un contrat signé avec validation complète.
+
+        Cette méthode critique permet la planification d'événements liés aux
+        contrats clients avec validation stricte des contraintes métier et
+        attribution optionnelle d'un support responsable.
+
+        Permissions requises:
+            - GESTION: Création libre tous événements
+            - COMMERCIAL: Création pour ses propres contrats uniquement
+            - SUPPORT: Aucun accès création directe
+
+        Contraintes métier obligatoires:
+            - Contrat doit exister et être signé (status SIGNED)
+            - Commercial actuel doit être responsable du contrat (sauf GESTION)
+            - Dates cohérentes (fin après début, futures recommandées)
+            - Lieu et nombre participants obligatoires
+            - Support assigné doit être du département SUPPORT si spécifié
+
+        Validations automatiques:
+            - Nom événement format valide (pas caractères spéciaux)
+            - Lieu non vide et format correct
+            - Nombre participants positif et réaliste
+            - Plage dates cohérente (début < fin)
+            - Support valide si assigné
+
+        Attribution support:
+            - Optionnelle lors création
+            - Peut être ajoutée/modifiée ultérieurement
+            - Validation département SUPPORT obligatoire
+            - Auto-notification support si assigné
+
+        Args:
+            contract_id (int): ID contrat associé (doit être signé)
+            name (str): Nom descriptif de l'événement
+            start_date (datetime): Date/heure début événement
+            end_date (datetime): Date/heure fin événement
+            location (str): Lieu de déroulement événement
+            attendees (int): Nombre participants prévus
+            notes (str, optional): Notes complémentaires organisation
+            support_contact_id (int, optional): ID support responsable
+
+        Returns:
+            Event: Nouvel événement créé avec toutes relations
+
+        Raises:
+            AuthorizationError: Si permissions insuffisantes ou contrat inaccessible
+            ValidationError: Si données invalides ou contrat non signé
+            ValueError: Si contrat inexistant ou support invalide
+            Exception: Si erreur technique création
+
+        Processus création:
+            1. Validation permissions utilisateur
+            2. Vérification existence et statut contrat
+            3. Validation données événement
+            4. Vérification support si assigné
+            5. Création événement avec relations
+            6. Notification support si applicable
+
+        Traçabilité:
+            - Lien automatique vers contrat parent
+            - Horodatage création précis
+            - Identité créateur tracée
+            - Historique modifications futures
+
+        Exemple:
+            >>> from datetime import datetime, timedelta
+            >>> demain = datetime.now() + timedelta(days=1)
+            >>> fin = demain + timedelta(hours=4)
+            >>> event = controller.create_event(
+            ...     contract_id=123,
+            ...     name="Conférence Produit 2024",
+            ...     start_date=demain,
+            ...     end_date=fin,
+            ...     location="Centre Convention Paris",
+            ...     attendees=150,
+            ...     notes="Prévoir matériel audiovisuel"
+            ... )
+            >>> print(f"Événement créé: {event.name}")
+        """
         if not self.permission_checker.has_permission(self.current_user, 'create_event'):
             raise AuthorizationError("Seule la gestion peut créer des événements")
 
@@ -205,7 +284,64 @@ class EventController(BaseController):
             raise Exception(f"Erreur lors de la mise à jour: {e}")
 
     def assign_support_to_event(self, event_id: int, support_user_id: int) -> Event:
-        """Assigner un support a un evenement"""
+        """
+        Assigner un collaborateur support à un événement spécifique.
+
+        Cette méthode de gestion opérationnelle permet l'attribution
+        d'un responsable support à un événement pour assurer son
+        bon déroulement et la coordination client.
+
+        Permissions requises:
+            - Département GESTION exclusivement
+            - Contrôle strict des assignations support
+            - Validation hiérarchique obligatoire
+
+        Contraintes assignation:
+            - Événement doit exister et être accessible
+            - Utilisateur assigné doit être département SUPPORT
+            - Support doit être actif et disponible
+            - Possibilité réassignation si nécessaire
+
+        Validations sécurisées:
+            - Existence événement et permissions accès
+            - Validation département support assigné
+            - Vérification statut actif collaborateur
+            - Transaction atomique avec rollback
+
+        Impact opérationnel:
+            - Support devient responsable événement
+            - Notifications automatiques si configurées
+            - Mise à jour planning support
+            - Traçabilité assignation pour audit
+
+        Args:
+            event_id (int): Identifiant unique événement cible
+            support_user_id (int): ID collaborateur support à assigner
+
+        Returns:
+            Event: Événement mis à jour avec support assigné
+
+        Raises:
+            AuthorizationError: Si utilisateur non-GESTION
+            ValueError: Si événement ou support invalide/inexistant
+            ValidationError: Si support non-département SUPPORT
+            Exception: Si erreur technique assignation
+
+        Gestion des conflits:
+            - Réassignation automatique si support déjà assigné
+            - Vérification disponibilité support (optionnelle)
+            - Notification ancien support si changement
+            - Historique assignations tracé
+
+        Exemple:
+            >>> # Assignation support à événement
+            >>> event = controller.assign_support_to_event(
+            ...     event_id=456,
+            ...     support_user_id=789
+            ... )
+            >>> print(f"Support {event.support_contact.full_name} "
+            ...       f"assigné à {event.name}")
+        """
         if not self.current_user.is_gestion:
             raise AuthorizationError("Seule la gestion peut assigner des supports")
 

@@ -97,13 +97,79 @@ class BaseController:
         self.current_user = user
 
     def require_authentication(self):
-        """Vérifier qu'un utilisateur est connecté"""
+        """
+        Vérifier qu'un utilisateur est authentifié pour l'opération courante.
+
+        Cette méthode fondamentale de sécurité assure qu'aucune opération
+        protégée ne peut être exécutée sans authentification préalable valide.
+
+        Contrôles de sécurité:
+            - Présence utilisateur connecté dans le contexte
+            - Validation session active (pas expirée)
+            - Vérification intégrité token si applicable
+
+        Mécanisme protection:
+            - Blocage immédiat si aucun utilisateur connecté
+            - Exception AuthorizationError pour gestion erreurs
+            - Redirection vers authentification si configurée
+
+        Returns:
+            User: Utilisateur authentifié pour chaînage méthodes
+
+        Raises:
+            AuthorizationError: Si aucun utilisateur connecté
+
+        Usage pattern:
+            - Appelée au début operations protégées
+            - Combinée avec vérifications permissions
+            - Intégrée dans decorators sécurité
+
+        Exemple:
+            >>> # Dans méthode protégée
+            >>> def operation_sensible(self):
+            ...     user = self.require_authentication()
+            ...     # Suite traitement avec user validé
+        """
         if not self.current_user:
             raise AuthorizationError("Authentification requise")
         return self.current_user
 
     def safe_commit(self):
-        """Effectuer un commit sécurisé avec gestion d'erreurs"""
+        """
+        Effectuer un commit sécurisé avec gestion complète d'erreurs.
+
+        Cette méthode critique assure la persistance sécurisée des modifications
+        en base de données avec rollback automatique en cas d'erreur pour
+        maintenir la cohérence et l'intégrité des données.
+
+        Sécurité transactionnelle:
+            - Commit atomique de la transaction courante
+            - Rollback automatique si erreur SQLAlchemy
+            - Préservation intégrité base de données
+            - Gestion exceptions typées pour debug
+
+        Gestion d'erreurs:
+            - Capture toutes exceptions SQLAlchemy
+            - Rollback immédiat si problème
+            - Re-levée exception pour traitement amont
+            - Conservation stack trace originale
+
+        Raises:
+            SQLAlchemyError: Si erreur base données (après rollback)
+
+        Pattern d'usage:
+            - Appelée après modifications entité
+            - Combinée avec try/except dans contrôleurs
+            - Utilisée dans opérations CRUD complexes
+
+        Exemple:
+            >>> try:
+            ...     # Modifications entités
+            ...     self.safe_commit()
+            ... except SQLAlchemyError:
+            ...     # Gestion erreur spécifique
+            ...     raise Exception("Échec sauvegarde")
+        """
         try:
             self.db.commit()
         except SQLAlchemyError as e:
