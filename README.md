@@ -199,9 +199,9 @@ erDiagram
         datetime updated_at
     }
     
-    USERS ||--o{ CLIENTS : "commercial_contact"
-    USERS ||--o{ CONTRACTS : "commercial_contact"
-    USERS ||--o{ EVENTS : "support_contact"
+    USERS ||--o{ CLIENTS : "manages"
+    USERS ||--o{ CONTRACTS : "handles"
+    USERS ||--o{ EVENTS : "supports"
     CLIENTS ||--o{ CONTRACTS : "has"
     CONTRACTS ||--o{ EVENTS : "generates"
 ```
@@ -210,9 +210,9 @@ erDiagram
 
 #### 1. Relations principales
 
-- **User → Client** (1:N) : Un commercial gère plusieurs clients
-- **User → Contract** (1:N) : Un commercial gère plusieurs contrats
-- **User → Event** (1:N) : Un support peut être assigné à plusieurs événements
+- **User → Client** (1:N) : Un commercial gère plusieurs clients (commercial_contact)
+- **User → Contract** (1:N) : Un commercial gère plusieurs contrats (commercial_contact)
+- **User → Event** (1:N) : Un support peut être assigné à plusieurs événements (support_contact)
 - **Client → Contract** (1:N) : Un client peut avoir plusieurs contrats
 - **Contract → Event** (1:N) : Un contrat peut générer plusieurs événements
 
