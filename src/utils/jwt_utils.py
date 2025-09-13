@@ -292,6 +292,18 @@ class JWTManager:
             # Erreur de suppression - situation critique mais gérée
             return False
 
+    def logout(self) -> bool:
+        """
+        Déconnecter l'utilisateur en supprimant son token.
+
+        Méthode alias pour clear_token() qui respecte la convention
+        de nommage pour les opérations de déconnexion.
+
+        Returns:
+            bool: True si déconnexion réussie, False sinon
+        """
+        return self.clear_token()
+
     def get_current_user_data(self) -> Optional[Dict[str, Any]]:
         """
         Récupérer les données de l'utilisateur actuellement connecté.
